@@ -1,0 +1,24 @@
+# 生产环境配置（conf.prod.yaml）
+# 敏感信息通过 .env.prod 或环境变量 VEHIVLE_* 注入，此处仅写非敏感默认值
+
+app:
+  env: prod
+  port: 9991
+  read_timeout: 30
+  write_timeout: 30
+  log_level: info
+
+database:
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 300
+
+redis:
+  db: 0
+  timeout: 3
+
+oss:
+  sign_expire: 3600
+
+jwt:
+  expire_hours: 24
