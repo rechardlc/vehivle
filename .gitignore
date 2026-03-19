@@ -54,6 +54,9 @@ out/
 # Go
 bin/
 *.exe
+.gocache/
+.gomodcache/
+tmp/
 
 # Misc
 *.tmp

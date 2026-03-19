@@ -1,4 +1,4 @@
-﻿# Server 目录总览
+# Server 目录总览
 
 ## 目标
 这个目录是两/三轮车渠道分销电子展厅 V1 的 Go 后端工作区。
@@ -22,3 +22,4 @@
 ## 和 PRD/tech 的关系
 - 详细映射见 `docs/prd-mapping/README.md`。
 - Go 学习与实战路径见 `docs/learning-path/go-backend-learning-roadmap.md`。
+- 学习记录与每日进度见 `docs/learn/progress.md`。

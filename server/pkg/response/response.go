@@ -5,12 +5,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 const (
-	CodeSuccess = "000000" // 成功
-	CodeAuthFailed = "A00001" // 认证失败
-	CodeAuthDenied = "A00004" // 授权失败
-	CodeParamError = "B00001" // 参数错误
+	CodeSuccess       = "000000" // 成功
+	CodeAuthFailed    = "A00001" // 认证失败
+	CodeAuthDenied    = "A00004" // 授权失败
+	CodeParamError    = "B00001" // 参数错误
 	CodeBusinessError = "C00002" // 业务错误
-	CodeMediaError = "M00001" // 媒体错误
+	CodeMediaError    = "M00001" // 媒体错误
+	CodeNotFound      = "D00001" // 路由不存在
+	CodeMethodNotAllowed = "D00002" // 方法不允许
 )
 
 const RequestIDKey = "request_id" // 请求ID键名
@@ -57,6 +59,28 @@ func Success(c *gin.Context, data interface{}) {
 func Fail(c *gin.Context, code string, message string) {
 	c.JSON(http.StatusOK, Body{
 		Code:      code,
+		Message:   message,
+		Data:      nil,
+		RequestID: getRequestID(c),
+		Timestamp: time.Now().Format(time.RFC3339),
+	})
+}
+
+// FailNotFound 路由不存在（HTTP 404），用于 NoRoute 通配。
+func FailNotFound(c *gin.Context, message string) {
+	c.JSON(http.StatusNotFound, Body{
+		Code:      CodeNotFound,
+		Message:   message,
+		Data:      nil,
+		RequestID: getRequestID(c),
+		Timestamp: time.Now().Format(time.RFC3339),
+	})
+}
+
+// FailMethodNotAllowed 方法不允许（HTTP 405），用于 NoMethod 通配。
+func FailMethodNotAllowed(c *gin.Context, message string) {
+	c.JSON(http.StatusMethodNotAllowed, Body{
+		Code:      CodeMethodNotAllowed,
 		Message:   message,
 		Data:      nil,
 		RequestID: getRequestID(c),

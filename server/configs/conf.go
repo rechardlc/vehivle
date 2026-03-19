@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/subosito/gotenv"
+	// "github.com/fsnotify/fsnotify"
 )
 
 const envPrefix = "VEHIVLE"
@@ -88,6 +89,16 @@ func Load() (*Conf, error) {
 	v.AddConfigPath("../configs")
 	// 设置配置文件名
 	v.SetConfigName("conf." + env)
+	// // 监听配置文件变化
+	// v.WatchConfig()
+	// // 当配置文件变化时，重新读取配置文件
+	// v.OnConfigChange(func(e fsnotify.Event) {
+	// 	fmt.Println("config file changed:", e.Name)
+	// 	if err := v.ReadInConfig(); err != nil {
+	// 		fmt.Errorf("failed to read config file conf.%s.yaml: %w", env, err)
+	// 	}
+	// })
+
 	// 读取配置文件
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file conf.%s.yaml: %w", env, err)
