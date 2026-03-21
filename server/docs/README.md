@@ -6,7 +6,7 @@
 ## 当前文档
 - `prd-mapping`：PRD/tech 到后端实现的映射。
 - `learning-path`：Go 后端学习与实战路线。
-- `learn`：Go 后端学习记录（知识库、每日进度、复盘），见 [learn/progress.md](./learn/progress.md)。
+- `learn`：Go 后端学习记录（知识库、每日进度、复盘），入口 [learn/README.md](./learn/README.md)，总进度 [learn/progress.md](./learn/progress.md)。
 
 ## 文档管理原则
 - 文档是开发流程的一部分，不是收尾工作。

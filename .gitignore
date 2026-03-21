@@ -54,9 +54,17 @@ out/
 # Go
 bin/
 *.exe
+# go test -c / 覆盖率等本地产物
+*.test
+coverage.out
+coverage.html
+*.coverprofile
+# 构建与模块缓存（可设于 server/ 等子目录）
 .gocache/
 .gomodcache/
+# 含 server/tmp（Air / Makefile 编译输出）
 tmp/
+server/migrate
 
 # Misc
 *.tmp

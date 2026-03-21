@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)（最新：迁移、Docker Compose、Go 接口哲学、分层链路诊断）。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)（最新：迁移、分层诊断、车型 List 全链路已打通）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -11,7 +11,7 @@
 | 1 | 第 1 步：工程壳（configs、logger、response、main、bootstrap） | ✅ 已完成 |
 | 2 | 第 2 步：HTTP 基座（路由分组、router、handler、NoRoute/NoMethod 通配、完整中间件链） | ✅ 已完成 |
 | 3 | 第 3 步：业务语义（domain/model、enum、rule） | ✅ 已完成 |
-| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM 连接与注入；✅ golang-migrate、`000001` 表结构、Makefile 迁移命令；✅ Service 层接口设计；⚠️ Handler→Service 注入不匹配；⚠️ Repository 实现不完整；⏳ handler 真实读写） |
+| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移、`000001`；✅ `VehicleRepo`：`GetById`/`Update`/`List`；✅ `List`：Handler→Service→Repo→DB；⏳ `Create`/`Delete`、分页与参数校验） |
 | 5 | 第 5 步：认证闭环 | 待开始 |
 | 6 | 第 6～12 步 | 待开始 |
 
@@ -26,7 +26,7 @@
 | 2 | configs、logger、response、main 启动、中间件 | ✅ 已完成 |
 | 3 | bootstrap 抽取、路由分组（admin/public）、完整中间件链 | ✅ 已完成 |
 | 4 | domain 建模（enum、model、rule） | ✅ 已完成 |
-| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移、Service 接口设计；⚠️ Handler→Service 注入需修、Repository 方法待补全；⏳ 打通首条完整读写链路） |
+| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移、首条 List 读写链路；✅ `Update` 支撑 `Publish`；⏳ 其余 CRUD、分页、事务） |
 | 6 | 认证与权限（JWT、RBAC） | 待开始 |
 | 7 | 核心业务域（分类、车型、媒体等） | 待开始 |
 | 8 | 缓存、性能、异常兜底 | 待开始 |
@@ -41,20 +41,19 @@
 main ✅
   └─ Bootstrap ✅ (cfg → logger → DB → middleware → router)
        └─ Router ✅ (admin/public 分组, health, 404/405)
-            └─ Handler ⚠️ (构造方式需改：注入 Service 而非 *gorm.DB；方法体需调用 Service)
-                 └─ Service ✅ (接口由消费方定义, Publish 逻辑完整)
-                      └─ Repository ⚠️ (GetById 已有, 缺 Update / List / Create / Delete)
+            └─ Handler（车型）✅ List 已接通；⏳ Create/Update/Delete 仍为占位
+                 └─ Service ✅ (VehicleRepo 接口 + Publish + List)
+                      └─ Repository ✅ GetById / Update / List（⏳ Create/Delete 待补）
                            └─ *gorm.DB ✅
 ```
 
-### 断裂点
+### 待办 / 断裂点
 
 | # | 问题 | 文件 |
 |---|------|------|
-| 1 | `NewVehicles(db)` 传 `*gorm.DB` 给 `NewService`，类型不匹配 | `handler/vehicles.go` |
-| 2 | `postgres.VehicleRepo` 只有 `GetById`，缺 `Update` 等方法 | `repository/postgres/vehicle_repo.go` |
-| 3 | Handler 方法全为空壳，未调用 Service | `handler/vehicles.go` |
-| 4 | User 模块无 Service / Repository 层 | `handler/user.go` |
+| 1 | 车型 `Create`/`Update`/`Delete` 未接 Service / DB | `handler/vehicles.go` |
+| 2 | `VehicleRepo` 尚无 `Create`/`Delete`（及分页） | `repository/postgres/vehicle_repo.go` |
+| 3 | User 模块无 Service / Repository 层 | `handler/user.go` |
 
 ---
 
@@ -75,10 +74,10 @@ server/
 ├── internal/infrastructure/postgres/ # Postgres 连接 ✅
 ├── internal/domain/    # 领域语义 ✅（enum / model / rule）
 ├── internal/service/vehicle/ # 业务服务 ✅（接口 + Publish 逻辑）
-├── internal/repository/postgres/ # 数据仓储 ⚠️（GetById 可用，方法待补全）
+├── internal/repository/postgres/ # 数据仓储 ✅（车型：GetById、Update、List）
 ├── internal/transport/http/
 │   ├── router/         # 路由 ✅
-│   └── handler/        # 处理器 ⚠️（构造与方法体待修）
+│   └── handler/        # 处理器 ⏳（车型 List ✅；其余方法占位）
 ├── pkg/
 │   ├── logger/         # 日志 ✅
 │   └── response/       # 统一响应 ✅
@@ -87,18 +86,18 @@ server/
 
 ---
 
-## 五、下一步建议
+## 五、下一步建议（对齐 [循序渐进总说明](../循序渐进总说明.md) 第 4～5 步）
 
-1. **补全 Repository**：为 `postgres.VehicleRepo` 添加 `Update`、`List`、`Create`、`Delete` 方法，使其满足 service 定义的接口。
-2. **修复 Handler 构造与注入**：`NewVehicles` 接收 `*vehicle.Service`（而非 `*gorm.DB`）；Router 中按 `repo → service → handler` 顺序构建。
-3. **打通首条完整链路**：`GET /api/v1/admin/vehicles` → Handler.List → Service.List → Repo.List → DB → 返回真实数据。
-4. **domain 延续**：rule 扩展（下架、删除）与表字段一致。
-5. **（可选）** 新表迁移 `000002_...`（如 `categories`），勿改已执行的 `000001`。
-6. **（可选）** `main` 退出时 `postgres.Close`；GORM SQL 日志接入统一 logger。
+1. **车型写操作**：为 `VehicleRepo` 增加 `Create`/`Delete`（及需要的 DTO），Handler 中 `Create`/`Update`/`Delete` 调用 Service。
+2. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
+3. **domain / rule**：扩展下架、删除规则，与 `vehicles.status` CHECK 一致。
+4. **第 5 步认证**：登录、JWT、RBAC（见 [learning-path 阶段 4](../learning-path/go-backend-learning-roadmap.md)）。
+5. **（可选）** 新迁移 `000002_...`（如 `categories`），勿改已执行的 `000001`。
+6. **（可选）** 优雅关闭时 `postgres.Close`；GORM SQL 日志接入统一 logger。
 
 ---
 
-## 五、每日进度
+## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
 
@@ -109,12 +108,13 @@ server/
 - **完成**：`migrations/000001_init_schema`（`admin_users`、`vehicles`、`system_settings`）；字段 `--` 注释与 `COMMENT ON TABLE/COLUMN`
 - **完成**：`Makefile`：`migrate-up`、`migrate-down`、`migrate-version`
 - **完成**：`migrations/README.md`（注释约定、已执行迁移勿改）
-- **完成**：全链路诊断（main → bootstrap → router → handler → service → repository → DB），定位 4 处断裂点
-- **完成**：`service/vehicle/service.go` 修复 — import 路径改正（`vehicle` → `vehivle`）；接口 `VehicleRepo` 定义在消费方（service 包内）
-- **学习**：Go 接口哲学 — 接口由消费方定义、隐式实现（鸭子类型）；与 TypeScript/Java `implements` 的差异
-- **学习**：Go 四件套模式 — interface → struct → NewXxx → 指针接收者方法；「结构体」（`struct`）vs「结构」（架构）的概念区分
-- **复盘**：迁移与连接分离；链路断裂主因是 Handler 直接传 `*gorm.DB` 给 Service（类型不匹配）；接口归属 service 包后 `repository/` 无需单独定义接口文件
-- **明日第一件事**：补全 Repository 方法 → 修复 Handler 构造注入 → 打通 `GET /api/v1/admin/vehicles` 首条完整读写链路
+- **完成**：全链路诊断（main → bootstrap → router → handler → service → repository → DB），定位并记录原断裂点
+- **完成**：`service/vehicle/service.go` — import 路径 `vehivle/...`；`VehicleRepo` 接口定义在 service 包
+- **完成（补充）**：`handler/vehicles.go` — `NewVehicleRepo(db)` → `NewService(repo)`；`VehicleRepo` 实现 `Update`、`List`；`Service.List`；`List`  handler 调用 Service，公开路径仅 `published`
+- **学习**：Go 接口哲学 — 接口由消费方定义、隐式实现；与 TypeScript/Java `implements` 的差异
+- **学习**：Go 四件套模式 — interface → struct → NewXxx → 指针接收者方法
+- **复盘**：迁移与连接分离；原断裂点为 Handler 误将 `*gorm.DB` 注入 Service；现已打通 `GET /api/v1/admin/vehicles` 与 `GET /api/v1/public/vehicles` 的列表查询
+- **明日第一件事**：车型 `Create`/`Delete` 接 Service + Repo，或进入认证闭环（第 5 步）
 
 ### 2026-03-20
 
@@ -157,4 +157,4 @@ server/
 
 ---
 
-*最后更新：2026-03-21（迁移、Docker Compose、Go 接口哲学、分层链路诊断与断裂点修复方向、lesson-20260321 与 progress 同步）*
+*最后更新：2026-03-21（对齐 [docs/README](../README.md)、[learning-path](../learning-path/go-backend-learning-roadmap.md)；车型 List 链路已落地；progress / lesson-20260321 / learn/README 同步）*

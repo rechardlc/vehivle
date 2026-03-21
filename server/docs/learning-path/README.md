@@ -1,4 +1,4 @@
-﻿# 学习路径文档目录
+# 学习路径文档目录
 
 ## 作用
 把“学习 Go”和“完成本项目”合并成一条可执行路线。
@@ -7,3 +7,4 @@
 - 主文档：`go-backend-learning-roadmap.md`。
 - 每完成一个阶段，就在文档里打卡并补充你的复盘。
 - 学习时始终以 PRD 的真实功能作为练习对象，避免只做孤立语法题。
+- 每日执行记录与进度表见 [`../learn/progress.md`](../learn/progress.md)，索引见 [`../learn/README.md`](../learn/README.md)。

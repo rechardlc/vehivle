@@ -1,0 +1,26 @@
+# learn — Go 后端学习记录
+
+## 作用
+沉淀每日学习笔记、进度与复盘，与 `server/docs` 其他目录配合使用。
+
+## 与 `server/docs` 的关系
+| 目录 | 内容 |
+|------|------|
+| [../README.md](../README.md) | 文档总览与原则 |
+| [../循序渐进总说明.md](../循序渐进总说明.md) | 12 步落地顺序与每步完成标准 |
+| [../learning-path/go-backend-learning-roadmap.md](../learning-path/go-backend-learning-roadmap.md) | 阶段化学习路线与验收 |
+| [../prd-mapping/README.md](../prd-mapping/README.md) | PRD/技术到实现的映射 |
+
+本目录专注 **执行记录**：今天学了什么、代码推进到哪、明天第一件事。
+
+## 文件索引
+| 文件 | 说明 |
+|------|------|
+| [progress.md](./progress.md) | 总进度表、全链路状态、每日倒序记录 |
+| [lesson-20260317.md](./lesson-20260317.md) | 知识库（工程壳、配置、日志等） |
+| [lesson-20260318.md](./lesson-20260318.md) | 指针/值与 logger 数据流 |
+| [lesson-20260319.md](./lesson-20260319.md) | HTTP 基座、router、通配响应 |
+| [lesson-20260320.md](./lesson-20260320.md) | domain、Postgres 连接、bootstrap 注入 |
+| [lesson-20260321.md](./lesson-20260321.md) | 迁移、分层诊断、车型 List 链路落地 |
+
+建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`。
