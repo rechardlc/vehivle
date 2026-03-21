@@ -1,0 +1,53 @@
+# 本地开发依赖：PostgreSQL + Redis
+# 镜像：默认使用下方变量；与本机已有标签不一致时，在与本文件同目录的 .env 里设置
+#   POSTGRES_IMAGE、REDIS_IMAGE（见 .env.example），或执行 docker images 查看本地 TAG。
+# 不拉取远端：pull_policy: never，仅使用本地已存在的镜像。
+#
+# 用法：
+#   cd deploy/docker && docker compose up -d
+# 停止并删除容器（保留卷数据）：
+#   docker compose down
+# 连接串见 README.md，在 server/.env 中配置 VEHIVLE_DATABASE_DSN
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:13}
+    pull_policy: never
+    container_name: vehivle-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vehivle
+      POSTGRES_PASSWORD: vehivle
+      POSTGRES_DB: vehivle
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - vehivle_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vehivle -d vehivle"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:latest}
+    pull_policy: never
+    container_name: vehivle-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - vehivle_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 8
+      start_period: 5s
+
+volumes:
+  vehivle_pg_data:
+  vehivle_redis_data:

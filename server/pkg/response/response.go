@@ -1,17 +1,20 @@
 package response
+
 import (
 	"net/http"
 	"time"
+
 	"github.com/gin-gonic/gin"
 )
+
 const (
-	CodeSuccess       = "000000" // 成功
-	CodeAuthFailed    = "A00001" // 认证失败
-	CodeAuthDenied    = "A00004" // 授权失败
-	CodeParamError    = "B00001" // 参数错误
-	CodeBusinessError = "C00002" // 业务错误
-	CodeMediaError    = "M00001" // 媒体错误
-	CodeNotFound      = "D00001" // 路由不存在
+	CodeSuccess          = "000000" // 成功
+	CodeAuthFailed       = "A00001" // 认证失败
+	CodeAuthDenied       = "A00004" // 授权失败
+	CodeParamError       = "B00001" // 参数错误
+	CodeBusinessError    = "C00002" // 业务错误
+	CodeMediaError       = "M00001" // 媒体错误
+	CodeNotFound         = "D00001" // 路由不存在
 	CodeMethodNotAllowed = "D00002" // 方法不允许
 )
 

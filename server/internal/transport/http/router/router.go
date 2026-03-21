@@ -1,50 +1,62 @@
 package router
 
 import (
-	"github.com/gin-gonic/gin"
 	"log/slog"
+	"vehivle/internal/transport/http/handler"
 	"vehivle/pkg/logger"
 	"vehivle/pkg/response"
-	"vehivle/internal/transport/http/handler"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // Router 路由注册器，持有 Gin 引擎并负责 API 路由分组与挂载。
 type Router struct {
 	engine *gin.Engine
 	logger logger.Logger
+	db     *gorm.DB
 }
 
 // New 创建 Router 实例，engine 为已完成中间件配置的 Gin 引擎，logger 用于请求日志。
-func New(engine *gin.Engine, logger logger.Logger) *Router {
-	return &Router{engine: engine, logger: logger}
+func New(engine *gin.Engine, logger logger.Logger, db *gorm.DB) *Router {
+	return &Router{engine: engine, logger: logger, db: db}
 }
 
 // Register 注册 API 路由分组（admin、public）、健康检查等路由。
 func (r *Router) Register() error {
 	// 健康检查：GET /health，用于探活、负载均衡健康检查等。
 	r.engine.GET("/health", r.healthHandler)
-
+	// 注册admin路由
 	v1 := r.engine.Group("/api/v1")
+	// 注册admin路由组
 	admin := v1.Group("/admin")
 	{
+		// 注册user路由组
 		user := admin.Group("/user")
+		// 创建userHandler实例
+		userHandler := handler.NewUser(r.db)
 		{
-			user.GET("/:user_id", handler.UserHandler)
-			user.POST("/", handler.UserCreateHandler)
-			user.PUT("/:user_id", handler.UserUpdateHandler)
-			user.DELETE("/:user_id", handler.UserDeleteHandler)
+			user.GET("/:user_id", userHandler.Get)
+			user.POST("/", userHandler.Create)
+			user.PUT("/:user_id", userHandler.Update)
+			user.DELETE("/:user_id", userHandler.Delete)
 		}
+		// 注册vehicles路由组
 		vehicles := admin.Group("/vehicles")
+		// 创建vehiclesHandler实例
+		vehiclesHandler := handler.NewVehicles(r.db)
 		{
-			vehicles.GET("/", handler.VehiclesListHandler)
-			vehicles.POST("/", handler.VehiclesCreateHandler)
-			vehicles.PUT("/:vehicle_id", handler.VehiclesUpdateHandler)
-			vehicles.DELETE("/:vehicle_id", handler.VehiclesDeleteHandler)
+			vehicles.GET("/", vehiclesHandler.List)
+			vehicles.POST("/", vehiclesHandler.Create)
+			vehicles.PUT("/:vehicle_id", vehiclesHandler.Update)
+			vehicles.DELETE("/:vehicle_id", vehiclesHandler.Delete)
 		}
 	}
+	// 注册public路由
 	public := v1.Group("/public")
 	{
-		public.GET("/vehicles", handler.VehiclesListHandler)
+		// 注册vehicles路由
+		public.GET("/vehicles", handler.NewVehicles(r.db).List)
 	}
 
 	// 通配：未注册路由返回统一 404（类似前端 catch-all）
