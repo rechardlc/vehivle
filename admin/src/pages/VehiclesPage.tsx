@@ -1,9 +1,10 @@
-﻿import {
+import {
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
   EyeInvisibleOutlined,
   PlusOutlined,
+  ReloadOutlined,
   RocketOutlined
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,7 +39,7 @@ interface FilterState {
   categoryId?: string;
 }
 
-type VehicleFormValue = Pick<Vehicle, "name" | "categoryId" | "coverUrl" | "msrpPrice" | "sellingPoints" | "sortOrder"> & {
+type VehicleFormValue = Pick<Vehicle, "name" | "categoryId" | "coverMediaId" | "msrpPrice" | "sellingPoints" | "sortOrder"> & {
   priceMode: PriceMode;
 };
 
@@ -66,6 +67,8 @@ export function VehiclesPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<VehicleFormValue>();
   const [filter, setFilter] = useState<FilterState>({ page: 1, pageSize: 10 });
+  /** 递增后用于重置筛选区未受控组件的展示（与 filter 清空同步） */
+  const [filterResetKey, setFilterResetKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<VehicleListItem | null>(null);
@@ -155,7 +158,7 @@ export function VehiclesPage() {
     form.setFieldsValue({
       name: "",
       categoryId: undefined,
-      coverUrl: "",
+      coverMediaId: "",
       msrpPrice: 0,
       priceMode: "msrp",
       sellingPoints: "",
@@ -169,7 +172,7 @@ export function VehiclesPage() {
     form.setFieldsValue({
       name: record.name,
       categoryId: record.categoryId,
-      coverUrl: record.coverUrl,
+      coverMediaId: record.coverMediaId,
       msrpPrice: record.msrpPrice,
       priceMode: record.priceMode,
       sellingPoints: record.sellingPoints,
@@ -189,6 +192,14 @@ export function VehiclesPage() {
       return;
     }
     createMutation.mutate(values);
+  }
+
+  /** 清空筛选条件并重新拉取列表（重置分页与表格勾选） */
+  function handleRefreshList() {
+    setFilter({ page: 1, pageSize: 10 });
+    setFilterResetKey((k) => k + 1);
+    setSelectedIds([]);
+    void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
   }
 
   const columns: ColumnsType<VehicleListItem> = [
@@ -262,7 +273,7 @@ export function VehiclesPage() {
         </Space>
       }
     >
-      <Space wrap style={{ marginBottom: 16 }}>
+      <Space key={filterResetKey} wrap style={{ marginBottom: 16 }}>
         <Input.Search
           allowClear
           placeholder="请输入车型名称"
@@ -283,6 +294,9 @@ export function VehiclesPage() {
           options={categoryOptions}
           onChange={(categoryId) => setFilter((prev) => ({ ...prev, page: 1, categoryId }))}
         />
+        <Button icon={<ReloadOutlined />} loading={vehiclesQuery.isFetching} onClick={handleRefreshList}>
+          重置
+        </Button>
       </Space>
 
       <Table
@@ -340,7 +354,7 @@ export function VehiclesPage() {
               </Form.Item>
             </Col>
             <Col xs={24}>
-              <Form.Item name="coverUrl" label="封面图" rules={[{ required: true, message: "请上传封面图" }]}>
+              <Form.Item name="coverMediaId" label="封面图" rules={[{ required: true, message: "请上传封面图" }]}>
                 <ImageUploader placeholder="请上传车型封面图" />
               </Form.Item>
             </Col>

@@ -22,5 +22,6 @@
 | [lesson-20260319.md](./lesson-20260319.md) | HTTP 基座、router、通配响应 |
 | [lesson-20260320.md](./lesson-20260320.md) | domain、Postgres 连接、bootstrap 注入 |
 | [lesson-20260321.md](./lesson-20260321.md) | 迁移、分层诊断、车型 List 链路落地 |
+| [lesson-20260323.md](./lesson-20260323.md) | 301 重定向排障、air 静默降级、`*string` 指针修复 |
 
 建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`。

@@ -8,6 +8,7 @@ import (
 
 	"gorm.io/gorm"
 )
+
 // VehicleRepo 车辆仓库
 type VehicleRepo struct {
 	db *gorm.DB
@@ -47,4 +48,14 @@ func (v *VehicleRepo) List(ctx context.Context, onlyPublished bool) ([]*model.Ve
 		out[i] = &rows[i]
 	}
 	return out, nil
+}
+
+// Create 创建车型
+func (v *VehicleRepo) Create(ctx context.Context, vehicle *model.Vehicle) (*model.Vehicle, error) {
+	// 创建车型
+	if err := v.db.WithContext(ctx).Create(vehicle).Error; err != nil {
+		return nil, err
+	}
+	// 返回车型
+	return vehicle, nil
 }

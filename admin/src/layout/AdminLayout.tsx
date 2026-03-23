@@ -9,8 +9,8 @@ import {
   TagsOutlined
 } from "@ant-design/icons";
 import { Avatar, Button, Layout, Menu, Space, Typography } from "antd";
-import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { clearAuthState, getAuthState } from "../state/auth";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { clearAuthState, getAuthState, LOGIN_BYPASS_GUEST } from "../state/auth";
 
 const { Header, Sider, Content } = Layout;
 
@@ -29,15 +29,12 @@ function resolveSelectedKey(pathname: string): string {
 }
 
 export function AdminLayout() {
-  const auth = getAuthState();
+  // TODO(登录): 恢复 `const auth = getAuthState();` 与下方未登录跳转，移除访客回退（与 LoginPage 正式对接）。
+  const auth = getAuthState() ?? LOGIN_BYPASS_GUEST;
   const navigate = useNavigate();
   const location = useLocation();
   const selectedKey = resolveSelectedKey(location.pathname);
   const currentMenu = menus.find((item) => item.key === selectedKey);
-
-  if (!auth) {
-    return <Navigate to="/login" replace />;
-  }
 
   return (
     <div className="admin-shell">

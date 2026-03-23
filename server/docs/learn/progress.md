@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)（最新：迁移、分层诊断、车型 List 全链路已打通）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)（最新：301 重定向排障、air 编译失败静默降级、`*string` 指针类型修复）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -11,7 +11,7 @@
 | 1 | 第 1 步：工程壳（configs、logger、response、main、bootstrap） | ✅ 已完成 |
 | 2 | 第 2 步：HTTP 基座（路由分组、router、handler、NoRoute/NoMethod 通配、完整中间件链） | ✅ 已完成 |
 | 3 | 第 3 步：业务语义（domain/model、enum、rule） | ✅ 已完成 |
-| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移、`000001`；✅ `VehicleRepo`：`GetById`/`Update`/`List`；✅ `List`：Handler→Service→Repo→DB；⏳ `Create`/`Delete`、分页与参数校验） |
+| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移、`000001`/`000002`；✅ `VehicleRepo`：`GetById`/`Update`/`List`/`Create`；✅ `CategoryRepo`：CRUD 全链路；⏳ 车型 `Update`/`Delete`、分页与参数校验） |
 | 5 | 第 5 步：认证闭环 | 待开始 |
 | 6 | 第 6～12 步 | 待开始 |
 
@@ -26,9 +26,9 @@
 | 2 | configs、logger、response、main 启动、中间件 | ✅ 已完成 |
 | 3 | bootstrap 抽取、路由分组（admin/public）、完整中间件链 | ✅ 已完成 |
 | 4 | domain 建模（enum、model、rule） | ✅ 已完成 |
-| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移、首条 List 读写链路；✅ `Update` 支撑 `Publish`；⏳ 其余 CRUD、分页、事务） |
+| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移、车型/分类 List 读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD 全链路；⏳ 车型 Update/Delete、分页、事务） |
 | 6 | 认证与权限（JWT、RBAC） | 待开始 |
-| 7 | 核心业务域（分类、车型、媒体等） | 待开始 |
+| 7 | 核心业务域（分类、车型、媒体等） | 进行中（✅ 分类 CRUD + 状态枚举 + parentName；⏳ 车型完整 CRUD、媒体） |
 | 8 | 缓存、性能、异常兜底 | 待开始 |
 | 9 | 测试与质量门禁 | 待开始 |
 | 10 | 部署与上线 | 待开始 |
@@ -41,9 +41,13 @@
 main ✅
   └─ Bootstrap ✅ (cfg → logger → DB → middleware → router)
        └─ Router ✅ (admin/public 分组, health, 404/405)
-            └─ Handler（车型）✅ List 已接通；⏳ Create/Update/Delete 仍为占位
-                 └─ Service ✅ (VehicleRepo 接口 + Publish + List)
-                      └─ Repository ✅ GetById / Update / List（⏳ Create/Delete 待补）
+            ├─ Handler（车型）✅ List/Create 已接通；⏳ Update/Delete 仍为占位
+            │    └─ Service ✅ (VehicleRepo 接口 + Publish + List + Create)
+            │         └─ Repository ✅ GetById / Update / List / Create（⏳ Delete 待补）
+            │              └─ *gorm.DB ✅
+            └─ Handler（分类）✅ List/Create 已接通
+                 └─ Service ✅ (CategoryRepo 接口 + List/Create/Update/Delete)
+                      └─ Repository ✅ CRUD 全链路
                            └─ *gorm.DB ✅
 ```
 
@@ -51,9 +55,10 @@ main ✅
 
 | # | 问题 | 文件 |
 |---|------|------|
-| 1 | 车型 `Create`/`Update`/`Delete` 未接 Service / DB | `handler/vehicles.go` |
-| 2 | `VehicleRepo` 尚无 `Create`/`Delete`（及分页） | `repository/postgres/vehicle_repo.go` |
-| 3 | User 模块无 Service / Repository 层 | `handler/user.go` |
+| 1 | 车型 `Update`/`Delete` 未接 Service / DB | `handler/vehicles.go` |
+| 2 | `VehicleRepo` 尚无 `Delete`（及分页） | `repository/postgres/vehicle_repo.go` |
+| 3 | 分类 `Update`/`Delete` handler 未实现（路由未注册） | `handler/categories.go`、`router/router.go` |
+| 4 | User 模块无 Service / Repository 层 | `handler/user.go` |
 
 ---
 
@@ -100,6 +105,25 @@ server/
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-03-23
+
+- **排障**：前端 `GET /api/v1/admin/vehicles` 返回 301 重定向问题
+- **修复**：`bootstrap.go` 添加 `r.RedirectTrailingSlash = false`，关闭 Gin 尾斜杠自动重定向（前后端分离 API 项目应关闭）
+- **修复**：`vehicle_publish.go` — `CategoryID` 从 `string` 改为 `*string` 后的指针空值判断（`v.CategoryID == nil || *v.CategoryID == ""`）
+- **修复**：`handler/vehicles.go` — 新增 `strPtr()` 辅助函数，`CategoryID` 赋值改用指针，修复编译错误
+- **发现**：`air` 编译失败后静默降级——继续运行旧二进制，且大量启动日志刷走编译错误信息
+- **学习**：Gin radix tree 的 `Group` + 子路由尾斜杠行为；`RedirectTrailingSlash` 的历史由来与企业 API 最佳实践
+- **学习**：Go `string → *string` 类型变更的连锁影响（赋值、比较、解引用三类用法需全局排查）
+- **经验**：改了代码不生效时，先 `go build ./cmd/api` 验证编译是否通过，再查逻辑
+- **完成**：前后端 API JSON 全站统一 camelCase（model json tag、response、handler、admin api 层映射全部清理）
+- **完成**：分类状态 `TEXT('enabled'/'disabled')` → `SMALLINT(0/1)`（迁移、enum、handler、admin 同步）
+- **完成**：分类模块 CRUD —— handler Create（`ShouldBindJSON`）、List（含 parentName 填充）、Service、Repository
+- **学习**：Go struct embedding 消除 DTO 与 Entity 字段重复（`Category` 嵌入 `CategoryCreateInput`）
+- **学习**：`json` tag 与 GORM 列名独立——改 json tag 不影响 DB 列映射
+- **学习**：`gorm:"-"` 标记虚拟字段（如 `ParentName`）不写入数据库
+- **经验**：企业项目应在契约里固定 JSON 命名风格，前后端一致；状态枚举用 0/1 还是字符串需在文档里写死
+- **明日第一件事**：车型 `Update`/`Delete` handler 接 Service + Repo，或进入认证闭环（第 5 步）
 
 ### 2026-03-21
 
@@ -157,4 +181,4 @@ server/
 
 ---
 
-*最后更新：2026-03-21（对齐 [docs/README](../README.md)、[learning-path](../learning-path/go-backend-learning-roadmap.md)；车型 List 链路已落地；progress / lesson-20260321 / learn/README 同步）*
+*最后更新：2026-03-23（camelCase 统一、分类 CRUD 链路、状态枚举 0/1、struct embedding；progress / lesson-20260323 同步）*

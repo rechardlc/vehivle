@@ -27,7 +27,7 @@ type Body struct {
 	Code      string      `json:"code"`
 	Message   string      `json:"message"`
 	Data      interface{} `json:"data"`
-	RequestID string      `json:"request_id"`
+	RequestID string      `json:"requestId"`
 	Timestamp string      `json:"timestamp"`
 }
 
@@ -53,7 +53,6 @@ func Success(c *gin.Context, data interface{}) {
 		Code:      CodeSuccess,
 		Message:   "success",
 		Data:      data,
-		RequestID: getRequestID(c),
 		Timestamp: time.Now().Format(time.RFC3339),
 	})
 }
@@ -64,7 +63,6 @@ func Fail(c *gin.Context, code string, message string) {
 		Code:      code,
 		Message:   message,
 		Data:      nil,
-		RequestID: getRequestID(c),
 		Timestamp: time.Now().Format(time.RFC3339),
 	})
 }
@@ -75,7 +73,6 @@ func FailNotFound(c *gin.Context, message string) {
 		Code:      CodeNotFound,
 		Message:   message,
 		Data:      nil,
-		RequestID: getRequestID(c),
 		Timestamp: time.Now().Format(time.RFC3339),
 	})
 }
@@ -86,7 +83,6 @@ func FailMethodNotAllowed(c *gin.Context, message string) {
 		Code:      CodeMethodNotAllowed,
 		Message:   message,
 		Data:      nil,
-		RequestID: getRequestID(c),
 		Timestamp: time.Now().Format(time.RFC3339),
 	})
 }

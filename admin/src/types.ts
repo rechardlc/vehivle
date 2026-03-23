@@ -2,7 +2,7 @@ export interface ApiResponse<T> {
   code: string;
   message: string;
   data: T;
-  request_id: string;
+  requestId: string;
   timestamp: string;
 }
 
@@ -31,7 +31,8 @@ export interface AuthPayload {
   user: Omit<AdminUser, "password">;
 }
 
-export type CategoryStatus = "enabled" | "disabled";
+/** 分类启用状态：1=启用 0=禁用（与后端 JSON 数字一致） */
+export type CategoryStatus = 0 | 1;
 export interface Category {
   id: string;
   parentId: string | null;
@@ -39,6 +40,8 @@ export interface Category {
   name: string;
   status: CategoryStatus;
   sortOrder: number;
+  /** 列表接口由后端填充 */
+  parentName?: string;
 }
 
 export type FieldType = "text" | "number" | "single";
@@ -68,7 +71,8 @@ export interface Vehicle {
   id: string;
   categoryId: string;
   name: string;
-  coverUrl: string;
+  /** 后端封面媒体资源 ID（关联 media_assets） */
+  coverMediaId: string;
   priceMode: PriceMode;
   msrpPrice: number;
   status: VehicleStatus;

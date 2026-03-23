@@ -3,7 +3,7 @@ import { http, requestData } from "./client";
 
 export const categoriesApi = {
   list() {
-    return requestData<Array<Category & { parentName: string }>>(http.get("/admin/categories"));
+    return requestData<Category[]>(http.get("/admin/categories"));
   },
   create(payload: Pick<Category, "name" | "level" | "parentId" | "status" | "sortOrder">) {
     return requestData<Category>(http.post("/admin/categories", payload));

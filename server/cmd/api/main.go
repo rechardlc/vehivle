@@ -11,6 +11,7 @@ import (
 
 // main 是程序入口函数，初始化 Gin 引擎、注册健康检查接口并启动 HTTP 服务。
 func main() {
+	// 加载配置。
 	cfg, err := configs.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)

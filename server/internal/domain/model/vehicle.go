@@ -6,17 +6,17 @@ import (
 )
 
 type Vehicle struct {
-	ID string `json:"id"`
-	CategoryID string `json:"category_id"`
-	Name string `json:"name"`
-	CoverMediaID string `json:"cover_media_id"`
-	PriceMode enum.PriceMode `json:"price_mode"`
-	MSRPPrice int `json:"msrp_price"`
-	Status enum.VehicleStatus `json:"status"`
-	SellingPoints string `json:"selling_points"`
-	SortOrder int `json:"sort_order"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID            string             `json:"id"`
+	CategoryID    *string            `json:"categoryId,omitempty"`
+	Name          string             `json:"name"`
+	CoverMediaID  string             `json:"coverMediaId"`
+	PriceMode     enum.PriceMode     `json:"priceMode"`
+	MSRPPrice     int                `json:"msrpPrice"`
+	Status        enum.VehicleStatus `json:"status"`
+	SellingPoints string             `json:"sellingPoints"`
+	SortOrder     int                `json:"sortOrder"`
+	CreatedAt     time.Time          `json:"createdAt"`
+	UpdatedAt     time.Time          `json:"updatedAt"`
 }
 
 func (v *Vehicle) Publish() {

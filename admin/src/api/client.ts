@@ -1,12 +1,10 @@
 import axios, { AxiosError, type AxiosResponse } from "axios";
-import { mockAdapter } from "../mock/adapter";
 import type { ApiResponse } from "../types";
 import { getAuthState } from "../state/auth";
 
 export const http = axios.create({
   baseURL: "/api/v1",
-  timeout: 8000,
-  adapter: mockAdapter
+  timeout: 8000
 });
 
 http.interceptors.request.use((config) => {

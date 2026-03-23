@@ -43,6 +43,9 @@ func (b *Bootstrap) Run() (*gin.Engine, error) {
 	)
 	// 创建一个 Gin 引擎。
 	r := gin.New()
+	// 关闭尾斜杠自动重定向，避免 /path 被 301 到 /path/
+	// 前后端分离项目，因为前后端是两个项目，所以不需要尾斜杠自动重定向。
+	r.RedirectTrailingSlash = false
 	// 使用 Gin 的 Logger 中间件，用于记录请求日志。
 	r.Use(gin.Logger())
 	// 使用 Gin 的 Recovery 中间件，用于捕获 panic 并返回 500 错误。

@@ -5,6 +5,11 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth";
 import { getAuthState, setAuthState } from "../state/auth";
 
+/**
+ * TODO(登录): 与 AdminLayout 一并恢复「未登录不可进后台」：校验 token、未登录跳转 /login、对接真实登录接口。
+ * 当前开发阶段后台已临时放行（见 `AdminLayout` 与 `LOGIN_BYPASS_GUEST`）。
+ */
+
 interface LoginFormValue {
   username: string;
   password: string;

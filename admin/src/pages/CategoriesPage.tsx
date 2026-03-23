@@ -1,4 +1,4 @@
-﻿import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   App,
@@ -19,9 +19,26 @@ import {
 import { useMemo, useState } from "react";
 import { categoriesApi } from "../api/categories";
 import { PageCard } from "../components/PageCard";
-import type { Category } from "../types";
+import type { Category, CategoryStatus } from "../types";
 
 type CategoryFormValue = Pick<Category, "name" | "level" | "parentId" | "sortOrder"> & { statusEnabled: boolean };
+
+/** 列表筛选（客户端过滤，与 VehiclesPage 重置行为对齐） */
+interface FilterState {
+  keyword?: string;
+  level?: Category["level"];
+  status?: CategoryStatus;
+}
+
+const levelFilterOptions: Array<{ label: string; value: Category["level"] }> = [
+  { label: "一级分类", value: 1 },
+  { label: "二级分类", value: 2 }
+];
+
+const statusFilterOptions: Array<{ label: string; value: CategoryStatus }> = [
+  { label: "启用", value: 1 },
+  { label: "停用", value: 0 }
+];
 
 export function CategoriesPage() {
   const queryClient = useQueryClient();
@@ -29,11 +46,31 @@ export function CategoriesPage() {
   const [form] = Form.useForm<CategoryFormValue>();
   const [editing, setEditing] = useState<Category | null>(null);
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<FilterState>({});
+  /** 递增后用于重置筛选区未受控组件的展示（与 filter 清空同步） */
+  const [filterResetKey, setFilterResetKey] = useState(0);
 
   const listQuery = useQuery({
     queryKey: ["categories"],
     queryFn: categoriesApi.list
   });
+
+  const tableData = useMemo(() => {
+    const list = listQuery.data ?? [];
+    return list.filter((item) => {
+      const kw = filter.keyword?.trim().toLowerCase();
+      if (kw !== undefined && kw.length > 0 && !item.name.toLowerCase().includes(kw)) {
+        return false;
+      }
+      if (filter.level !== undefined && item.level !== filter.level) {
+        return false;
+      }
+      if (filter.status !== undefined && item.status !== filter.status) {
+        return false;
+      }
+      return true;
+    });
+  }, [listQuery.data, filter]);
 
   const createMutation = useMutation({
     mutationFn: categoriesApi.create,
@@ -94,7 +131,7 @@ export function CategoriesPage() {
       level: record.level,
       parentId: record.parentId,
       sortOrder: record.sortOrder,
-      statusEnabled: record.status === "enabled"
+      statusEnabled: record.status === 1
     });
   }
 
@@ -104,13 +141,20 @@ export function CategoriesPage() {
       level: values.level,
       parentId: values.level === 2 ? values.parentId : null,
       sortOrder: values.sortOrder,
-      status: values.statusEnabled ? "enabled" : "disabled"
+      status: values.statusEnabled ? 1 : 0
     };
     if (editing) {
       updateMutation.mutate({ id: editing.id, payload });
       return;
     }
     createMutation.mutate(payload);
+  }
+
+  /** 清空筛选条件并重新拉取列表（与 VehiclesPage 一致） */
+  function handleRefreshList() {
+    setFilter({});
+    setFilterResetKey((k) => k + 1);
+    void queryClient.invalidateQueries({ queryKey: ["categories"] });
   }
 
   return (
@@ -122,10 +166,36 @@ export function CategoriesPage() {
         </Button>
       }
     >
+      <Space key={filterResetKey} wrap className="categories-page-filter-bar" style={{ marginBottom: 16 }}>
+        <Input.Search
+          allowClear
+          placeholder="请输入分类名称"
+          style={{ width: 240 }}
+          onSearch={(keyword) => setFilter((prev) => ({ ...prev, keyword }))}
+        />
+        <Select
+          allowClear
+          placeholder="请选择层级"
+          style={{ width: 160 }}
+          options={levelFilterOptions}
+          onChange={(level) => setFilter((prev) => ({ ...prev, level }))}
+        />
+        <Select
+          allowClear
+          placeholder="请选择状态"
+          style={{ width: 160 }}
+          options={statusFilterOptions}
+          onChange={(status) => setFilter((prev) => ({ ...prev, status }))}
+        />
+        <Button icon={<ReloadOutlined />} loading={listQuery.isFetching} onClick={handleRefreshList}>
+          重置
+        </Button>
+      </Space>
+
       <Table
         rowKey="id"
         loading={listQuery.isLoading}
-        dataSource={listQuery.data ?? []}
+        dataSource={tableData}
         columns={[
           { title: "分类名称", dataIndex: "name" },
           { title: "层级", dataIndex: "level", render: (level: number) => `L${level}` },
@@ -136,7 +206,7 @@ export function CategoriesPage() {
             dataIndex: "status",
             width: 120,
             render: (status: Category["status"]) =>
-              status === "enabled" ? <Tag color="green">启用</Tag> : <Tag color="default">停用</Tag>
+              status === 1 ? <Tag color="green">启用</Tag> : <Tag color="default">停用</Tag>
           },
           {
             title: "操作",

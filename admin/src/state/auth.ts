@@ -8,6 +8,22 @@ export interface StoredAuthState {
   user: AuthPayload["user"];
 }
 
+/**
+ * TODO(登录): 启用 AdminLayout 未登录跳转 /login 后删除此占位与 AdminLayout 中的 `?? LOGIN_BYPASS_GUEST`。
+ * 开发期无登录态时用于顶栏展示，避免路由拦截阻断后台。
+ */
+export const LOGIN_BYPASS_GUEST: StoredAuthState = {
+  token: "",
+  refreshToken: "",
+  user: {
+    id: "guest",
+    username: "访客",
+    role: "operator",
+    status: "active",
+    lastLoginAt: ""
+  }
+};
+
 export function getAuthState(): StoredAuthState | null {
   const raw = localStorage.getItem(AUTH_STORAGE_KEY);
   if (!raw) {

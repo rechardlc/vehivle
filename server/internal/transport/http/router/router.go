@@ -37,7 +37,7 @@ func (r *Router) Register() error {
 		userHandler := handler.NewUser(r.db)
 		{
 			user.GET("/:user_id", userHandler.Get)
-			user.POST("/", userHandler.Create)
+			user.POST("", userHandler.Create)
 			user.PUT("/:user_id", userHandler.Update)
 			user.DELETE("/:user_id", userHandler.Delete)
 		}
@@ -46,10 +46,20 @@ func (r *Router) Register() error {
 		// 创建vehiclesHandler实例
 		vehiclesHandler := handler.NewVehicles(r.db)
 		{
-			vehicles.GET("/", vehiclesHandler.List)
-			vehicles.POST("/", vehiclesHandler.Create)
+			// "" 表示挂在 /vehicles 本身（无尾斜杠）；勿写成 " "（空格）或 "/"（会触发 301）
+			vehicles.GET("", vehiclesHandler.List)
+			vehicles.POST("", vehiclesHandler.Create)
 			vehicles.PUT("/:vehicle_id", vehiclesHandler.Update)
 			vehicles.DELETE("/:vehicle_id", vehiclesHandler.Delete)
+		}
+		// 注册categories路由组
+		categories := admin.Group("/categories")
+		// 创建categoriesHandler实例
+		categoriesHandler := handler.NewCategories(r.db)
+		{
+			categories.GET("", categoriesHandler.List)
+			categories.POST("", categoriesHandler.Create)
+			categories.DELETE("/:category_id", categoriesHandler.Delete)
 		}
 	}
 	// 注册public路由
@@ -88,6 +98,6 @@ func (r *Router) healthHandler(c *gin.Context) {
 	response.Success(c, gin.H{
 		"status":     "ok",
 		"message":    "API is running",
-		"request_id": rid,
+		"requestId": rid,
 	})
 }

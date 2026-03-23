@@ -13,6 +13,7 @@ type VehicleRepo interface {
 	GetById(ctx context.Context, id string) (*model.Vehicle, error)
 	Update(ctx context.Context, vehicle *model.Vehicle) error
 	List(ctx context.Context, onlyPublished bool) ([]*model.Vehicle, error)
+	Create(ctx context.Context, vehicle *model.Vehicle) (*model.Vehicle, error)
 }
 
 // Service 定义了车辆服务
@@ -28,6 +29,11 @@ func NewService(vehicles VehicleRepo) *Service {
 // List 返回车型列表；公开接口传 onlyPublished=true，后台管理传 false。
 func (s *Service) List(ctx context.Context, onlyPublished bool) ([]*model.Vehicle, error) {
 	return s.vehicles.List(ctx, onlyPublished)
+}
+
+// Create 创建车型
+func (s *Service) Create(ctx context.Context, vehicle *model.Vehicle) (*model.Vehicle, error) {
+	return s.vehicles.Create(ctx, vehicle)
 }
 
 // Publish 发布车辆

@@ -11,7 +11,18 @@ tmp_dir = "tmp"
   cmd = "go build -o ./tmp/main.exe ./cmd/api"
   delay = 1000
   entrypoint = ["tmp\\main.exe"]
-  exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+  # 文档、迁移 SQL、部署清单、脚本、测试树等变更不触发重编译（见 server/ 目录结构）
+  exclude_dir = [
+    "assets",
+    "deploy",
+    "docs",
+    "migrations",
+    "scripts",
+    "testdata",
+    "tests",
+    "tmp",
+    "vendor",
+  ]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
