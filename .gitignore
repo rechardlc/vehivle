@@ -32,6 +32,9 @@ build/
 .output/
 .cache/
 
+# TypeScript（增量编译 / project references 产物）
+*.tsbuildinfo
+
 # Python
 __pycache__/
 *.py[cod]
