@@ -104,6 +104,9 @@ func FailAuthDenied(c *gin.Context, message string) {
 
 // 业务错误响应
 func FailBusiness(c *gin.Context, message string) {
+	if message == "" {
+		message = "服务端异常！"
+	}
 	Fail(c, CodeBusinessError, message)
 }
 

@@ -1,4 +1,4 @@
-﻿import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   App,
@@ -218,7 +218,7 @@ export function ParamTemplatesPage() {
 
           <Form.List name="items">
             {(fields, { add, remove }) => (
-              <Space direction="vertical" style={{ width: "100%" }} size={12}>
+              <Space orientation="vertical" style={{ width: "100%" }} size={12}>
                 {fields.map((field, index) => (
                   <div className="list-row" key={field.key}>
                     <Form.Item

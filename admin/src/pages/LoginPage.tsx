@@ -50,7 +50,7 @@ export function LoginPage() {
         </div>
 
         <Card className="login-card" style={{ width: "100%" }}>
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <Space orientation="vertical" size={16} style={{ width: "100%" }}>
             <Typography.Title level={3} style={{ marginBottom: 0 }}>
               后台登录
             </Typography.Title>

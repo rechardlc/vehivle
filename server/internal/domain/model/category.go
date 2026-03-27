@@ -16,6 +16,15 @@ type CategoryCreateInput struct {
 	SortOrder int                 `json:"sortOrder"`
 }
 
+// CategoryUpdateBody PATCH 部分更新：仅非 nil 指针字段表示本次提交（omit 的键不覆盖库内原值）。
+type CategoryUpdateBody struct {
+	Name      *string              `json:"name,omitempty"`
+	ParentID  *string             `json:"parentId,omitempty"`
+	Level     *int                `json:"level,omitempty"`
+	Status    *enum.CategoryStatus `json:"status,omitempty"`
+	SortOrder *int                `json:"sortOrder,omitempty"`
+}
+
 // Category 领域实体；匿名嵌入 CategoryCreateInput，复用同一套字段与 json tag，避免与 Input 重复声明。
 // FE 类比：类似 class Category extends CategoryBase { id; createdAt; ... }，序列化时子类字段与基类展平到同一 JSON 对象。
 // Go detail: encoding/json 会把嵌入结构体的字段提升到外层；GORM 同样映射嵌入字段到表列。

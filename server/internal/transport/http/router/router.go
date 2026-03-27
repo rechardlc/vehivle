@@ -59,6 +59,7 @@ func (r *Router) Register() error {
 		{
 			categories.GET("", categoriesHandler.List)
 			categories.POST("", categoriesHandler.Create)
+			categories.PUT("/:category_id", categoriesHandler.Update)
 			categories.DELETE("/:category_id", categoriesHandler.Delete)
 		}
 	}

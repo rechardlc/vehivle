@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)（最新：301 重定向排障、air 编译失败静默降级、`*string` 指针类型修复）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)（最新：分类 PATCH 可选指针、`validateResolvedCategory` 合并校验）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -57,7 +57,7 @@ main ✅
 |---|------|------|
 | 1 | 车型 `Update`/`Delete` 未接 Service / DB | `handler/vehicles.go` |
 | 2 | `VehicleRepo` 尚无 `Delete`（及分页） | `repository/postgres/vehicle_repo.go` |
-| 3 | 分类 `Update`/`Delete` handler 未实现（路由未注册） | `handler/categories.go`、`router/router.go` |
+| 3 | 分类 `Update`/`Delete` | ✅ 已接通（PATCH 体为指针字段，见 [lesson-20260325](./lesson-20260325.md)） |
 | 4 | User 模块无 Service / Repository 层 | `handler/user.go` |
 
 ---
@@ -105,6 +105,15 @@ server/
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-03-25
+
+- **完成**：分类 **PUT 部分更新** 契约与实现对齐——`CategoryUpdateBody` 各字段为 **可选指针** + `omitempty`，区分 JSON **未传**与**传 0/空串**（`status`/`sortOrder`/`level` 等）。
+- **完成**：**合并后再校验**——`validateResolvedCategory(model.CategoryCreateInput)` 供 Create 与 Update（合并 `existing` 后）共用，避免重复业务判断。
+- **学习**：PATCH 合并时 **`Name`（`*string` → `string`）** 需 `*body.Name`，**`ParentID`（`*string` → `*string`）** 直接指针赋值；与领域模型「名称是值、父级是可空外键」一致。
+- **学习**：曾误写 **status 合并条件**（仅在「非法值」时写入）会导致合法 0/1 无法更新；正确路径为 **`body.Status != nil` 则写入，再由统一校验兜底**。
+- **文档**：新增 [lesson-20260325.md](./lesson-20260325.md)，更新 [learn/README.md](./README.md) 索引；[progress.md](./progress.md) 待办表中分类 Update/Delete 标为已完成。
+- **明日第一件事**：车型 `Update`/`Delete` handler 接 Service + Repo，或复用 PATCH 指针模式。
 
 ### 2026-03-23
 
@@ -181,4 +190,4 @@ server/
 
 ---
 
-*最后更新：2026-03-23（camelCase 统一、分类 CRUD 链路、状态枚举 0/1、struct embedding；progress / lesson-20260323 同步）*
+*最后更新：2026-03-25（分类 PATCH 指针体、`validateResolvedCategory`、lesson-20260325 / README / progress 同步）*

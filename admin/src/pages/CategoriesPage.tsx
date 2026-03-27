@@ -13,8 +13,7 @@ import {
   Select,
   Space,
   Switch,
-  Table,
-  Tag
+  Table
 } from "antd";
 import { useMemo, useState } from "react";
 import { categoriesApi } from "../api/categories";
@@ -39,6 +38,13 @@ const statusFilterOptions: Array<{ label: string; value: CategoryStatus }> = [
   { label: "启用", value: 1 },
   { label: "停用", value: 0 }
 ];
+
+/** updateMutation 乐观更新上下文：失败时用于回滚列表缓存 */
+interface CategoryUpdateMutationContext {
+  previousList: Category[] | undefined;
+  /** 列表内仅改 status：已先写入缓存，失败需回滚 */
+  isOptimisticStatusToggle: boolean;
+}
 
 export function CategoriesPage() {
   const queryClient = useQueryClient();
@@ -83,13 +89,51 @@ export function CategoriesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<Category> }) => categoriesApi.update(id, payload),
-    onSuccess: () => {
-      message.success("分类更新成功");
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      closeModal();
+    mutationFn: ({
+      id,
+      payload
+    }: {
+      id: string;
+      payload: Partial<Category>;
+      /** 为 true 时在成功后关闭编辑弹窗（列表内 Switch 改状态不应关弹窗） */
+      closeAfter?: boolean;
+    }) => categoriesApi.update(id, payload),
+    onMutate: async (variables): Promise<CategoryUpdateMutationContext> => {
+      const isOptimisticStatusToggle = variables.closeAfter === false && variables.payload.status !== undefined;
+      if (!isOptimisticStatusToggle) {
+        return { previousList: undefined, isOptimisticStatusToggle: false };
+      }
+      await queryClient.cancelQueries({ queryKey: ["categories"] });
+      const previousList = queryClient.getQueryData<Category[]>(["categories"]);
+      const nextStatus = variables.payload.status as CategoryStatus;
+      queryClient.setQueryData<Category[]>(["categories"], (old) =>
+        (old ?? []).map((c) => (c.id === variables.id ? { ...c, status: nextStatus } : c))
+      );
+      return { previousList, isOptimisticStatusToggle: true };
     },
-    onError: (error: Error) => message.error(error.message)
+    onSuccess: (data, variables, context) => {
+      if (context?.isOptimisticStatusToggle) {
+        queryClient.setQueryData<Category[]>(["categories"], (old) =>
+          (old ?? []).map((c) => (c.id === variables.id ? { ...c, ...data } : c))
+        );
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ["categories"] });
+      }
+      message.success("分类更新成功");
+      if (variables.closeAfter) {
+        closeModal();
+      }
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.isOptimisticStatusToggle) {
+        if (context.previousList !== undefined) {
+          queryClient.setQueryData(["categories"], context.previousList);
+        } else {
+          void queryClient.invalidateQueries({ queryKey: ["categories"] });
+        }
+      }
+      message.error(error.message);
+    }
   });
 
   const deleteMutation = useMutation({
@@ -135,6 +179,19 @@ export function CategoriesPage() {
     });
   }
 
+  /**
+   * 列表内切换启用/停用：仅提交 status，不关闭编辑弹窗。
+   * @param record 当前行分类
+   * @param enabled 开关是否打开（true=启用）
+   */
+  function onTableStatusChange(record: Category, enabled: boolean) {
+    const nextStatus: CategoryStatus = enabled ? 1 : 0;
+    if (record.status === nextStatus) {
+      return;
+    }
+    updateMutation.mutate({ id: record.id, payload: { status: nextStatus }, closeAfter: false });
+  }
+
   function onSubmit(values: CategoryFormValue) {
     const payload: Pick<Category, "name" | "level" | "parentId" | "status" | "sortOrder"> = {
       name: values.name,
@@ -144,7 +201,7 @@ export function CategoriesPage() {
       status: values.statusEnabled ? 1 : 0
     };
     if (editing) {
-      updateMutation.mutate({ id: editing.id, payload });
+      updateMutation.mutate({ id: editing.id, payload, closeAfter: true });
       return;
     }
     createMutation.mutate(payload);
@@ -204,9 +261,15 @@ export function CategoriesPage() {
           {
             title: "状态",
             dataIndex: "status",
-            width: 120,
-            render: (status: Category["status"]) =>
-              status === 1 ? <Tag color="green">启用</Tag> : <Tag color="default">停用</Tag>
+            width: 140,
+            render: (_: Category["status"], record: Category) => (
+              <Switch
+                checked={record.status === 1}
+                checkedChildren="启用"
+                unCheckedChildren="停用"
+                onChange={(checked) => onTableStatusChange(record, checked)}
+              />
+            )
           },
           {
             title: "操作",
@@ -233,7 +296,7 @@ export function CategoriesPage() {
         onCancel={closeModal}
         onOk={() => form.submit()}
         confirmLoading={createMutation.isPending || updateMutation.isPending}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" onFinish={onSubmit}>
           <Row gutter={16}>

@@ -83,7 +83,7 @@ export function ImageUploader({
     (value && (value.startsWith("http") || value.startsWith("data:")) ? value : undefined);
 
   return (
-    <Space direction="vertical" size={8}>
+    <Space orientation="vertical" size={8}>
       <Upload accept="image/*" showUploadList={false} beforeUpload={beforeUpload} customRequest={customRequest}>
         <Button icon={<UploadOutlined />} loading={uploading}>
           {value ? "重新上传" : "上传图片"}

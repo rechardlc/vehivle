@@ -23,5 +23,6 @@
 | [lesson-20260320.md](./lesson-20260320.md) | domain、Postgres 连接、bootstrap 注入 |
 | [lesson-20260321.md](./lesson-20260321.md) | 迁移、分层诊断、车型 List 链路落地 |
 | [lesson-20260323.md](./lesson-20260323.md) | 301 重定向排障、air 静默降级、`*string` 指针修复 |
+| [lesson-20260325.md](./lesson-20260325.md) | 分类 PATCH：可选指针体、合并与校验、`Name` vs `ParentID` 赋值 |
 
 建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`。
