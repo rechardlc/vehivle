@@ -49,7 +49,7 @@ export function ParamTemplatesPage() {
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
-    queryFn: categoriesApi.list
+    queryFn: () => categoriesApi.list()
   });
 
   const createMutation = useMutation({

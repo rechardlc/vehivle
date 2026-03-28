@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strings"
 
 	"vehivle/internal/domain/model"
 
@@ -48,11 +49,23 @@ func (r *CategoryRepo) GetChildListByID(ctx context.Context, id string) ([]*mode
 }
 
 /**
- * 获取分类列表
+ * 获取分类列表（可选 keyword / level / status，与 GET 查询参数一致）。
  */
-func (r *CategoryRepo) List(ctx context.Context) ([]*model.Category, error) {
+func (r *CategoryRepo) List(ctx context.Context, q model.CategoryListQuery) ([]*model.Category, error) {
 	var categories []*model.Category
-	if err := r.db.WithContext(ctx).Order("sort_order DESC, updated_at DESC").Find(&categories).Error; err != nil {
+	tx := r.db.WithContext(ctx).Model(&model.Category{})
+	// FE analogy: SQL WHERE 链式叠加，类似在 TS 里对数组多次 .filter。
+	// Go detail: substring 用 position + lower，避免 ILIKE 通配符与用户输入中的 %/_ 语义冲突。
+	if kw := strings.TrimSpace(q.Keyword); kw != "" {
+		tx = tx.Where("position(lower(?) in lower(name)) > 0", kw)
+	}
+	if q.Level != nil {
+		tx = tx.Where("level = ?", *q.Level)
+	}
+	if q.Status != nil {
+		tx = tx.Where("status = ?", *q.Status)
+	}
+	if err := tx.Order("sort_order DESC, updated_at DESC").Find(&categories).Error; err != nil {
 		return nil, err
 	}
 	return categories, nil

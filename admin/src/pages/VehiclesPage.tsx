@@ -80,7 +80,7 @@ export function VehiclesPage() {
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
-    queryFn: categoriesApi.list
+    queryFn: () => categoriesApi.list()
   });
 
   const refreshCoreQueries = () => {

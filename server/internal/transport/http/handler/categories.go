@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"strings"
 	"vehivle/internal/domain/enum"
 	"vehivle/internal/domain/model"
 	"vehivle/internal/repository/postgres"
@@ -52,11 +53,32 @@ func validateResolvedCategory(in model.CategoryCreateInput) error {
 	return nil
 }
 
+// categoryListQueryParams 绑定 GET /admin/categories 的 query（keyword、level、status 均可选）。
+type categoryListQueryParams struct {
+	Keyword string `form:"keyword"`
+	Level   *int   `form:"level"`
+	Status  *int   `form:"status"`
+}
+
 /**
  * 获取分类列表
  */
 func (c *Categories) List(ctx *gin.Context) {
-	items, err := c.CategoryService.List(ctx.Request.Context())
+	var raw categoryListQueryParams
+	if err := ctx.ShouldBindQuery(&raw); err != nil {
+		response.FailParam(ctx, err.Error())
+		return
+	}
+	q := model.CategoryListQuery{Keyword: strings.TrimSpace(raw.Keyword), Level: raw.Level}
+	if raw.Status != nil {
+		st := enum.CategoryStatus(*raw.Status)
+		if st != enum.CategoryStatusDisabled && st != enum.CategoryStatusEnabled {
+			response.FailParam(ctx, "无效的状态，必须是0或1")
+			return
+		}
+		q.Status = &st
+	}
+	items, err := c.CategoryService.List(ctx.Request.Context(), q)
 	if err != nil {
 		response.FailBusiness(ctx, err.Error())
 		return

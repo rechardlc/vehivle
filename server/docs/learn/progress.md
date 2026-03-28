@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)（最新：分类 PATCH 可选指针、`validateResolvedCategory` 合并校验）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)（最新：GORM 表列映射、`TableName`、迁移与 GORM 边界）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -74,7 +74,7 @@ server/
 ├── cmd/migrate/        # 数据库迁移 CLI ✅（iofs）
 ├── configs/            # 配置 ✅
 ├── deploy/docker/      # 本地 PG/Redis Compose ✅
-├── migrations/         # SQL 迁移 ✅（000001 三张主表）
+├── migrations/         # SQL 迁移 ✅（000001 主表、000002 categories 等）
 ├── internal/bootstrap/ # 依赖装配 ✅
 ├── internal/infrastructure/postgres/ # Postgres 连接 ✅
 ├── internal/domain/    # 领域语义 ✅（enum / model / rule）
@@ -105,6 +105,15 @@ server/
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-03-28
+
+- **学习**：**迁移（golang-migrate）** 与 **GORM** 职责分离——迁移负责 DDL/版本；GORM 运行时**不读取** `migrations/` 目录，仅按 struct、`TableName()`、列 tag 生成 SQL。
+- **学习**：表名 **`Category` → `categories`** 来自默认 **复数命名策略**；不规则表名需 **`TableName() string`** 与 `CREATE TABLE` 一致。
+- **学习**：列名 **`CreatedAt` → `created_at`** 为默认 **snake_case**；可用 **`gorm:"column:..."`** 显式对齐；**`gorm:"-"`** 表示非表列（如 `ParentName`）。
+- **学习**：domain struct **不必**包含表的全部列；**同一文件**内 `Category` + `CategoryCreateInput` + `CategoryUpdateBody` + `CategoryListQuery` 在本项目规模下 **内聚合理**。
+- **文档**：新增 [lesson-20260328.md](./lesson-20260328.md)，更新 [learn/README.md](./README.md) 索引；[progress.md](./progress.md) 迁移目录说明补充 `000002`。
+- **明日第一件事**：车型 `Update`/`Delete` 接 Service + Repo，或为 `Vehicle` 对齐 `TableName`/列 tag 与迁移。
 
 ### 2026-03-25
 
@@ -190,4 +199,4 @@ server/
 
 ---
 
-*最后更新：2026-03-25（分类 PATCH 指针体、`validateResolvedCategory`、lesson-20260325 / README / progress 同步）*
+*最后更新：2026-03-28（GORM 表列映射与迁移边界、lesson-20260328 / README / progress 同步）*

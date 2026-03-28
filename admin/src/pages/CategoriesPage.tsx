@@ -1,4 +1,4 @@
-import { DeleteOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   App,
@@ -16,13 +16,14 @@ import {
   Table
 } from "antd";
 import { useMemo, useState } from "react";
+import type { CategoryListParams } from "../api/categories";
 import { categoriesApi } from "../api/categories";
 import { PageCard } from "../components/PageCard";
 import type { Category, CategoryStatus } from "../types";
 
 type CategoryFormValue = Pick<Category, "name" | "level" | "parentId" | "sortOrder"> & { statusEnabled: boolean };
 
-/** 列表筛选（客户端过滤，与 VehiclesPage 重置行为对齐） */
+/** 列表筛选条件（草稿与已应用共用结构；仅「已应用」驱动列表请求） */
 interface FilterState {
   keyword?: string;
   level?: Category["level"];
@@ -39,9 +40,9 @@ const statusFilterOptions: Array<{ label: string; value: CategoryStatus }> = [
   { label: "停用", value: 0 }
 ];
 
-/** updateMutation 乐观更新上下文：失败时用于回滚列表缓存 */
+/** updateMutation 乐观更新上下文：失败时用于回滚各列表 query 缓存 */
 interface CategoryUpdateMutationContext {
-  previousList: Category[] | undefined;
+  previousEntries: Array<[readonly unknown[], Category[] | undefined]>;
   /** 列表内仅改 status：已先写入缓存，失败需回滚 */
   isOptimisticStatusToggle: boolean;
 }
@@ -52,31 +53,44 @@ export function CategoriesPage() {
   const [form] = Form.useForm<CategoryFormValue>();
   const [editing, setEditing] = useState<Category | null>(null);
   const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState<FilterState>({});
-  /** 递增后用于重置筛选区未受控组件的展示（与 filter 清空同步） */
+  /** 筛选区草稿：修改不触发列表请求 */
+  const [draftFilter, setDraftFilter] = useState<FilterState>({});
+  /** 已应用的筛选：仅在此变化时更新 queryKey 并请求后端 */
+  const [appliedFilter, setAppliedFilter] = useState<FilterState>({});
+  /** 递增后用于重置筛选区未受控组件的展示（与草稿/已应用清空同步） */
   const [filterResetKey, setFilterResetKey] = useState(0);
 
+  /** 与后端 CategoryListParams 对齐；空对象表示全量列表 */
+  const listParams: CategoryListParams = useMemo(() => {
+    const keyword = appliedFilter.keyword?.trim();
+    return {
+      ...(keyword !== undefined && keyword.length > 0 ? { keyword } : {}),
+      ...(appliedFilter.level !== undefined ? { level: appliedFilter.level } : {}),
+      ...(appliedFilter.status !== undefined ? { status: appliedFilter.status } : {})
+    };
+  }, [appliedFilter]);
+
+  /** 有筛选时主列表可能不含全部一级分类，需单独请求 ?level=1；无筛选时复用主列表数据，避免与「无参全量」重复请求 */
+  const hasListFilter = useMemo(() => {
+    const keyword = appliedFilter.keyword?.trim();
+    return (
+      (keyword !== undefined && keyword.length > 0) ||
+      appliedFilter.level !== undefined ||
+      appliedFilter.status !== undefined
+    );
+  }, [appliedFilter]);
+
   const listQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: categoriesApi.list
+    queryKey: ["categories", listParams],
+    queryFn: () => categoriesApi.list(listParams)
   });
 
-  const tableData = useMemo(() => {
-    const list = listQuery.data ?? [];
-    return list.filter((item) => {
-      const kw = filter.keyword?.trim().toLowerCase();
-      if (kw !== undefined && kw.length > 0 && !item.name.toLowerCase().includes(kw)) {
-        return false;
-      }
-      if (filter.level !== undefined && item.level !== filter.level) {
-        return false;
-      }
-      if (filter.status !== undefined && item.status !== filter.status) {
-        return false;
-      }
-      return true;
-    });
-  }, [listQuery.data, filter]);
+  /** 仅在有列表筛选时拉取一级分类（父级下拉）；无筛选时父级选项由 listQuery 全量数据推导 */
+  const level1ParentsQuery = useQuery({
+    queryKey: ["categories", "level1-parents"],
+    queryFn: () => categoriesApi.list({ level: 1 }),
+    enabled: hasListFilter
+  });
 
   const createMutation = useMutation({
     mutationFn: categoriesApi.create,
@@ -101,19 +115,19 @@ export function CategoriesPage() {
     onMutate: async (variables): Promise<CategoryUpdateMutationContext> => {
       const isOptimisticStatusToggle = variables.closeAfter === false && variables.payload.status !== undefined;
       if (!isOptimisticStatusToggle) {
-        return { previousList: undefined, isOptimisticStatusToggle: false };
+        return { previousEntries: [], isOptimisticStatusToggle: false };
       }
       await queryClient.cancelQueries({ queryKey: ["categories"] });
-      const previousList = queryClient.getQueryData<Category[]>(["categories"]);
+      const previousEntries = queryClient.getQueriesData<Category[]>({ queryKey: ["categories"] });
       const nextStatus = variables.payload.status as CategoryStatus;
-      queryClient.setQueryData<Category[]>(["categories"], (old) =>
+      queryClient.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) =>
         (old ?? []).map((c) => (c.id === variables.id ? { ...c, status: nextStatus } : c))
       );
-      return { previousList, isOptimisticStatusToggle: true };
+      return { previousEntries, isOptimisticStatusToggle: true };
     },
     onSuccess: (data, variables, context) => {
       if (context?.isOptimisticStatusToggle) {
-        queryClient.setQueryData<Category[]>(["categories"], (old) =>
+        queryClient.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) =>
           (old ?? []).map((c) => (c.id === variables.id ? { ...c, ...data } : c))
         );
       } else {
@@ -125,12 +139,12 @@ export function CategoriesPage() {
       }
     },
     onError: (error: Error, _variables, context) => {
-      if (context?.isOptimisticStatusToggle) {
-        if (context.previousList !== undefined) {
-          queryClient.setQueryData(["categories"], context.previousList);
-        } else {
-          void queryClient.invalidateQueries({ queryKey: ["categories"] });
+      if (context?.isOptimisticStatusToggle && context.previousEntries !== undefined) {
+        for (const [key, data] of context.previousEntries) {
+          queryClient.setQueryData(key, data);
         }
+      } else if (context?.isOptimisticStatusToggle) {
+        void queryClient.invalidateQueries({ queryKey: ["categories"] });
       }
       message.error(error.message);
     }
@@ -145,10 +159,14 @@ export function CategoriesPage() {
     onError: (error: Error) => message.error(error.message)
   });
 
-  const level1Options = useMemo(
-    () => (listQuery.data ?? []).filter((item) => item.level === 1).map((item) => ({ label: item.name, value: item.id })),
-    [listQuery.data]
-  );
+  const level1Options = useMemo(() => {
+    if (!hasListFilter) {
+      return (listQuery.data ?? [])
+        .filter((item) => item.level === 1)
+        .map((item) => ({ label: item.name, value: item.id }));
+    }
+    return (level1ParentsQuery.data ?? []).map((item) => ({ label: item.name, value: item.id }));
+  }, [hasListFilter, listQuery.data, level1ParentsQuery.data]);
 
   function closeModal() {
     setOpen(false);
@@ -207,11 +225,35 @@ export function CategoriesPage() {
     createMutation.mutate(payload);
   }
 
-  /** 清空筛选条件并重新拉取列表（与 VehiclesPage 一致） */
+  /** 将草稿条件应用为查询并请求列表 */
+  function handleQuery() {
+    const keyword = draftFilter.keyword?.trim();
+    setAppliedFilter({
+      ...(keyword !== undefined && keyword.length > 0 ? { keyword } : {}),
+      ...(draftFilter.level !== undefined ? { level: draftFilter.level } : {}),
+      ...(draftFilter.status !== undefined ? { status: draftFilter.status } : {})
+    });
+  }
+
+  /**
+   * 清空筛选并刷新列表。
+   * 不在此调用 `invalidateQueries({ queryKey: ["categories"] })`：会一次性失效主列表、`level1-parents` 等所有前缀匹配的 query，与 setState 触发的 key 变化叠加导致多次请求。
+   * 有筛选 → 清空后 queryKey 变化，useQuery 自动拉一次；已无筛选 → 仅显式 refetch 主列表一次。
+   */
   function handleRefreshList() {
-    setFilter({});
+    const keyword = appliedFilter.keyword?.trim();
+    const appliedEmpty =
+      (keyword === undefined || keyword.length === 0) &&
+      appliedFilter.level === undefined &&
+      appliedFilter.status === undefined;
+
+    setDraftFilter({});
+    setAppliedFilter({});
     setFilterResetKey((k) => k + 1);
-    void queryClient.invalidateQueries({ queryKey: ["categories"] });
+
+    if (appliedEmpty) {
+      void listQuery.refetch();
+    }
   }
 
   return (
@@ -224,26 +266,35 @@ export function CategoriesPage() {
       }
     >
       <Space key={filterResetKey} wrap className="categories-page-filter-bar" style={{ marginBottom: 16 }}>
-        <Input.Search
+        <Input
           allowClear
           placeholder="请输入分类名称"
           style={{ width: 240 }}
-          onSearch={(keyword) => setFilter((prev) => ({ ...prev, keyword }))}
+          value={draftFilter.keyword ?? ""}
+          onChange={(e) => {
+            const keyword = e.target.value;
+            setDraftFilter((prev) => ({ ...prev, keyword: keyword === "" ? undefined : keyword }));
+          }}
         />
         <Select
           allowClear
           placeholder="请选择层级"
           style={{ width: 160 }}
           options={levelFilterOptions}
-          onChange={(level) => setFilter((prev) => ({ ...prev, level }))}
+          value={draftFilter.level}
+          onChange={(level) => setDraftFilter((prev) => ({ ...prev, level }))}
         />
         <Select
           allowClear
           placeholder="请选择状态"
           style={{ width: 160 }}
           options={statusFilterOptions}
-          onChange={(status) => setFilter((prev) => ({ ...prev, status }))}
+          value={draftFilter.status}
+          onChange={(status) => setDraftFilter((prev) => ({ ...prev, status }))}
         />
+        <Button type="primary" icon={<SearchOutlined />} loading={listQuery.isFetching} onClick={handleQuery}>
+          查询
+        </Button>
         <Button icon={<ReloadOutlined />} loading={listQuery.isFetching} onClick={handleRefreshList}>
           重置
         </Button>
@@ -252,7 +303,7 @@ export function CategoriesPage() {
       <Table
         rowKey="id"
         loading={listQuery.isLoading}
-        dataSource={tableData}
+        dataSource={listQuery.data ?? []}
         columns={[
           { title: "分类名称", dataIndex: "name" },
           { title: "层级", dataIndex: "level", render: (level: number) => `L${level}` },

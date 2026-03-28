@@ -10,7 +10,7 @@ import (
 type CategoryRepo interface {
 	GetById(ctx context.Context, id string) (*model.Category, error)
 	GetChildListByID(ctx context.Context, id string) ([]*model.Category, error)
-	List(ctx context.Context) ([]*model.Category, error)
+	List(ctx context.Context, q model.CategoryListQuery) ([]*model.Category, error)
 	Create(ctx context.Context, category *model.Category) (*model.Category, error)
 	Update(ctx context.Context, category *model.Category) error
 	Delete(ctx context.Context, id string) error
@@ -22,8 +22,8 @@ type CategoryService struct {
 func NewCategoryService(categoryRepo CategoryRepo) *CategoryService {
 	return &CategoryService{categoryRepo: categoryRepo}
 }
-func (s *CategoryService) List(ctx context.Context) ([]*model.Category, error) {
-	return s.categoryRepo.List(ctx)
+func (s *CategoryService) List(ctx context.Context, q model.CategoryListQuery) ([]*model.Category, error) {
+	return s.categoryRepo.List(ctx, q)
 }
 
 // GetById 按主键查询单条分类（管理端编辑/更新前拉取当前数据）。
