@@ -5,6 +5,7 @@ import (
 	"vehivle/internal/transport/http/handler"
 	"vehivle/pkg/logger"
 	"vehivle/pkg/response"
+	"vehivle/internal/transport/http/middleware"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -57,7 +58,8 @@ func (r *Router) Register() error {
 		// 创建categoriesHandler实例
 		categoriesHandler := handler.NewCategories(r.db)
 		{
-			categories.GET("", categoriesHandler.List)
+			categoryList := []string{"keyword", "level", "status", "page", "pageSize", "sortField", "sortOrder"}
+			categories.GET("", middleware.ValidateParams(categoryList), categoriesHandler.List)
 			categories.POST("", categoriesHandler.Create)
 			categories.PUT("/:category_id", categoriesHandler.Update)
 			categories.DELETE("/:category_id", categoriesHandler.Delete)

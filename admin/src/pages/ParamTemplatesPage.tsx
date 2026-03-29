@@ -82,7 +82,7 @@ export function ParamTemplatesPage() {
   });
 
   const categoryOptions = useMemo(
-    () => (categoriesQuery.data ?? []).map((item) => ({ label: item.name, value: item.id })),
+    () => (categoriesQuery.data?.list ?? []).map((item) => ({ label: item.name, value: item.id })),
     [categoriesQuery.data]
   );
 

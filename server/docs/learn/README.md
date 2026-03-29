@@ -25,5 +25,6 @@
 | [lesson-20260323.md](./lesson-20260323.md) | 301 重定向排障、air 静默降级、`*string` 指针修复 |
 | [lesson-20260325.md](./lesson-20260325.md) | 分类 PATCH：可选指针体、合并与校验、`Name` vs `ParentID` 赋值 |
 | [lesson-20260328.md](./lesson-20260328.md) | GORM 表/列映射、`TableName`、迁移与运行时、domain 多类型同文件 |
+| [lesson-20260329.md](./lesson-20260329.md) | struct tag（`json`/`form`/`gorm`）、`ShouldBindQuery`/`ShouldBindJSON`、GET query 与 FormData；Gin 中间件（`HandlerFunc`、`Use`、单路由、`Next`/`Abort`、`ValidateParams`） |
 
 建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`。

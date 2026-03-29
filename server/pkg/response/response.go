@@ -31,6 +31,21 @@ type Body struct {
 	Timestamp string      `json:"timestamp"`
 }
 
+// 分页响应体
+type PageResult struct {
+	Page       int `json:"page"`
+	PageSize   int `json:"pageSize"`
+	Total      int `json:"total"`
+	TotalPages int `json:"totalPages"`
+}
+
+
+// 通用分页响应体
+type ListResult[T any] struct {
+	List []T `json:"list"`
+	Page *PageResult `json:"page"`
+}
+
 // 获取请求ID
 func getRequestID(c *gin.Context) string {
 	if v, ok := c.Get(RequestIDKey); ok {

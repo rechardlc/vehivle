@@ -15,11 +15,19 @@ import {
   Switch,
   Table
 } from "antd";
+import type { TableProps } from "antd";
+import dayjs from "dayjs";
 import { useMemo, useState } from "react";
-import type { CategoryListParams } from "../api/categories";
+import type { CategoryListParams, CategoryListResponse } from "../api/categories";
 import { categoriesApi } from "../api/categories";
 import { PageCard } from "../components/PageCard";
 import type { Category, CategoryStatus } from "../types";
+
+/** 分类列表默认分页（改此处即可调整首屏条数与起始页） */
+const DEFAULT_CATEGORY_LIST_PAGE = 1;
+const DEFAULT_CATEGORY_LIST_PAGE_SIZE = 10;
+/** 表格每页条数可选项，须与下方 pagination.pageSizeOptions 一致 */
+const CATEGORY_LIST_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 type CategoryFormValue = Pick<Category, "name" | "level" | "parentId" | "sortOrder"> & { statusEnabled: boolean };
 
@@ -42,7 +50,7 @@ const statusFilterOptions: Array<{ label: string; value: CategoryStatus }> = [
 
 /** updateMutation 乐观更新上下文：失败时用于回滚各列表 query 缓存 */
 interface CategoryUpdateMutationContext {
-  previousEntries: Array<[readonly unknown[], Category[] | undefined]>;
+  previousEntries: Array<[readonly unknown[], CategoryListResponse | undefined]>;
   /** 列表内仅改 status：已先写入缓存，失败需回滚 */
   isOptimisticStatusToggle: boolean;
 }
@@ -59,37 +67,40 @@ export function CategoriesPage() {
   const [appliedFilter, setAppliedFilter] = useState<FilterState>({});
   /** 递增后用于重置筛选区未受控组件的展示（与草稿/已应用清空同步） */
   const [filterResetKey, setFilterResetKey] = useState(0);
+  /** 与服务端分页对齐；与 DEFAULT_* 初始化一致 */
+  const [listPage, setListPage] = useState(DEFAULT_CATEGORY_LIST_PAGE);
+  const [listPageSize, setListPageSize] = useState(DEFAULT_CATEGORY_LIST_PAGE_SIZE);
+  /** 创建时间列排序：为 null 时不传 sortField/sortOrder，走后端默认序；有值时传 createdAt + asc/desc */
+  const [createdAtSortOrder, setCreatedAtSortOrder] = useState<"ascend" | "descend" | null>(null);
 
-  /** 与后端 CategoryListParams 对齐；空对象表示全量列表 */
+  /** 与后端 CategoryListParams 对齐（默认不传排序参数） */
   const listParams: CategoryListParams = useMemo(() => {
     const keyword = appliedFilter.keyword?.trim();
     return {
+      page: listPage,
+      pageSize: listPageSize,
+      ...(createdAtSortOrder != null
+        ? {
+            sortField: "createdAt" as const,
+            sortOrder: createdAtSortOrder === "ascend" ? ("asc" as const) : ("desc" as const)
+          }
+        : {}),
       ...(keyword !== undefined && keyword.length > 0 ? { keyword } : {}),
       ...(appliedFilter.level !== undefined ? { level: appliedFilter.level } : {}),
       ...(appliedFilter.status !== undefined ? { status: appliedFilter.status } : {})
     };
-  }, [appliedFilter]);
-
-  /** 有筛选时主列表可能不含全部一级分类，需单独请求 ?level=1；无筛选时复用主列表数据，避免与「无参全量」重复请求 */
-  const hasListFilter = useMemo(() => {
-    const keyword = appliedFilter.keyword?.trim();
-    return (
-      (keyword !== undefined && keyword.length > 0) ||
-      appliedFilter.level !== undefined ||
-      appliedFilter.status !== undefined
-    );
-  }, [appliedFilter]);
+  }, [appliedFilter, listPage, listPageSize, createdAtSortOrder]);
 
   const listQuery = useQuery({
     queryKey: ["categories", listParams],
     queryFn: () => categoriesApi.list(listParams)
   });
 
-  /** 仅在有列表筛选时拉取一级分类（父级下拉）；无筛选时父级选项由 listQuery 全量数据推导 */
-  const level1ParentsQuery = useQuery({
-    queryKey: ["categories", "level1-parents"],
-    queryFn: () => categoriesApi.list({ level: 1 }),
-    enabled: hasListFilter
+  /** 父级下拉：一级分类全量（pageSize=0 不分页）；与主列表分页无关 */
+  const level1ForParentQuery = useQuery({
+    queryKey: ["categories", "level1-parent-options"],
+    queryFn: () =>
+      categoriesApi.list({ level: 1, page: DEFAULT_CATEGORY_LIST_PAGE, pageSize: 0 })
   });
 
   const createMutation = useMutation({
@@ -118,18 +129,26 @@ export function CategoriesPage() {
         return { previousEntries: [], isOptimisticStatusToggle: false };
       }
       await queryClient.cancelQueries({ queryKey: ["categories"] });
-      const previousEntries = queryClient.getQueriesData<Category[]>({ queryKey: ["categories"] });
+      const previousEntries = queryClient.getQueriesData<CategoryListResponse>({ queryKey: ["categories"] });
       const nextStatus = variables.payload.status as CategoryStatus;
-      queryClient.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) =>
-        (old ?? []).map((c) => (c.id === variables.id ? { ...c, status: nextStatus } : c))
-      );
+      queryClient.setQueriesData<CategoryListResponse>({ queryKey: ["categories"] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          list: old.list.map((c) => (c.id === variables.id ? { ...c, status: nextStatus } : c))
+        };
+      });
       return { previousEntries, isOptimisticStatusToggle: true };
     },
     onSuccess: (data, variables, context) => {
       if (context?.isOptimisticStatusToggle) {
-        queryClient.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) =>
-          (old ?? []).map((c) => (c.id === variables.id ? { ...c, ...data } : c))
-        );
+        queryClient.setQueriesData<CategoryListResponse>({ queryKey: ["categories"] }, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            list: old.list.map((c) => (c.id === variables.id ? { ...c, ...data } : c))
+          };
+        });
       } else {
         void queryClient.invalidateQueries({ queryKey: ["categories"] });
       }
@@ -159,14 +178,10 @@ export function CategoriesPage() {
     onError: (error: Error) => message.error(error.message)
   });
 
-  const level1Options = useMemo(() => {
-    if (!hasListFilter) {
-      return (listQuery.data ?? [])
-        .filter((item) => item.level === 1)
-        .map((item) => ({ label: item.name, value: item.id }));
-    }
-    return (level1ParentsQuery.data ?? []).map((item) => ({ label: item.name, value: item.id }));
-  }, [hasListFilter, listQuery.data, level1ParentsQuery.data]);
+  const level1Options = useMemo(
+    () => (level1ForParentQuery.data?.list ?? []).map((item) => ({ label: item.name, value: item.id })),
+    [level1ForParentQuery.data]
+  );
 
   function closeModal() {
     setOpen(false);
@@ -225,9 +240,33 @@ export function CategoriesPage() {
     createMutation.mutate(payload);
   }
 
+  /** 表头排序 / 翻页：与服务端分页、排序联动 */
+  const onTableChange: TableProps<Category>["onChange"] = (pagination, _filters, sorter, extra) => {
+    if (extra?.action === "paginate") {
+      if (pagination.current != null) {
+        setListPage(pagination.current);
+      }
+      if (pagination.pageSize != null) {
+        setListPageSize(pagination.pageSize);
+      }
+      return;
+    }
+    if (extra?.action === "sort") {
+      const s = Array.isArray(sorter) ? sorter[0] : sorter;
+      const colKey = s && "columnKey" in s ? s.columnKey : undefined;
+      const field = s && "field" in s ? s.field : undefined;
+      const isCreatedAt = colKey === "createdAt" || field === "createdAt";
+      if (s && isCreatedAt) {
+        setCreatedAtSortOrder(s.order ?? null);
+        setListPage(DEFAULT_CATEGORY_LIST_PAGE);
+      }
+    }
+  };
+
   /** 将草稿条件应用为查询并请求列表 */
   function handleQuery() {
     const keyword = draftFilter.keyword?.trim();
+    setListPage(DEFAULT_CATEGORY_LIST_PAGE);
     setAppliedFilter({
       ...(keyword !== undefined && keyword.length > 0 ? { keyword } : {}),
       ...(draftFilter.level !== undefined ? { level: draftFilter.level } : {}),
@@ -249,6 +288,9 @@ export function CategoriesPage() {
 
     setDraftFilter({});
     setAppliedFilter({});
+    setListPage(DEFAULT_CATEGORY_LIST_PAGE);
+    setListPageSize(DEFAULT_CATEGORY_LIST_PAGE_SIZE);
+    setCreatedAtSortOrder(null);
     setFilterResetKey((k) => k + 1);
 
     if (appliedEmpty) {
@@ -300,15 +342,34 @@ export function CategoriesPage() {
         </Button>
       </Space>
 
-      <Table
+      <Table<Category>
         rowKey="id"
         loading={listQuery.isLoading}
-        dataSource={listQuery.data ?? []}
+        dataSource={listQuery.data?.list ?? []}
+        onChange={onTableChange}
+        pagination={{
+          current: listPage,
+          pageSize: listPageSize,
+          total: listQuery.data?.page.total ?? 0,
+          showSizeChanger: true,
+          pageSizeOptions: [...CATEGORY_LIST_PAGE_SIZE_OPTIONS],
+          showTotal: (total) => `共 ${total} 条`
+        }}
         columns={[
           { title: "分类名称", dataIndex: "name" },
           { title: "层级", dataIndex: "level", render: (level: number) => `L${level}` },
           { title: "父级分类", dataIndex: "parentName" },
           { title: "排序值", dataIndex: "sortOrder", width: 100 },
+          {
+            title: "创建时间",
+            key: "createdAt",
+            dataIndex: "createdAt",
+            width: 180,
+            sorter: true,
+            sortOrder: createdAtSortOrder ?? undefined,
+            sortDirections: ["descend", "ascend"],
+            render: (v: Category["createdAt"]) => (v ? dayjs(v).format("YYYY-MM-DD HH:mm:ss") : "—")
+          },
           {
             title: "状态",
             dataIndex: "status",

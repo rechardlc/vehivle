@@ -40,6 +40,8 @@ export interface Category {
   name: string;
   status: CategoryStatus;
   sortOrder: number;
+  /** ISO 8601，列表接口返回 */
+  createdAt: string;
   /** 列表接口由后端填充 */
   parentName?: string;
 }

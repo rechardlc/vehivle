@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)（最新：GORM 表列映射、`TableName`、迁移与 GORM 边界）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)（最新：struct tag 与绑定、Gin 中间件与 `ValidateParams`）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -106,6 +106,16 @@ server/
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
 
+### 2026-03-29
+
+- **学习**：Go **struct tag** 是「给具体库看的字符串」；**`json` / `form` / `gorm`** 由不同读者解析，可并列，**不互相替代**。
+- **学习**：**`ShouldBindQuery`** 绑定 **URL query**，依赖字段 **`form:"..."`**；**`ShouldBindJSON`** 绑定 **body JSON**，依赖 **`json:"..."`**。GET 列表仅 query 时应用前者，不能用后者接同一套参数。
+- **学习**：GET 的「表单感」来自 **query 的 key=value**；前端 **`FormData`** 多为 **POST multipart**，与 **GET + `ShouldBindQuery`** 不是同一用法。
+- **学习**：**`gin.HandlerFunc`** 即 **`func(*gin.Context)`**，业务 handler 与中间件**同类型**；**`router.Use(mw)`** 作用于组/引擎上后续路由，**`GET("", mw, handler)`** 仅单路由链式执行；**`c.Next()`** 放行、**`c.Abort()`** 中断。
+- **学习**：**`middleware.ValidateParams(allowFields)`** 为工厂函数，返回 **`HandlerFunc`**，对 **query 键**做白名单校验；分类列表路由 **`categories.GET("", ValidateParams(...), List)`**（见 `router/router.go`）。
+- **文档**：新增并扩充 [lesson-20260329.md](./lesson-20260329.md)（含第七节中间件），更新 [learn/README.md](./README.md) 索引；[progress.md](./progress.md) 本段与文首「最新」指向同步。
+- **明日第一件事**：车型 `Update`/`Delete` 接 Service + Repo，或对照 `categories` handler 梳理绑定与 DTO 分层注释。
+
 ### 2026-03-28
 
 - **学习**：**迁移（golang-migrate）** 与 **GORM** 职责分离——迁移负责 DDL/版本；GORM 运行时**不读取** `migrations/` 目录，仅按 struct、`TableName()`、列 tag 生成 SQL。
@@ -199,4 +209,4 @@ server/
 
 ---
 
-*最后更新：2026-03-28（GORM 表列映射与迁移边界、lesson-20260328 / README / progress 同步）*
+*最后更新：2026-03-29（struct tag、Gin 绑定与中间件、`ValidateParams`；lesson-20260329 / README / progress 同步）*

@@ -7,10 +7,16 @@ import (
 )
 
 // CategoryListQuery 管理端 GET 列表查询（字段均为可选，未传表示不筛选）。
+// Page/PageSize：Page 从 1 起；PageSize 为 0 表示不分页（返回当前筛选下的全部行）。
+// SortField/SortOrder：SortField 为 "createdAt" 时按创建时间排；SortOrder 为 "asc"|"desc"（忽略大小写）；未传 SortField 时保持 sort_order + updated_at 默认序。
 type CategoryListQuery struct {
-	Keyword string
-	Level   *int
-	Status  *enum.CategoryStatus
+	Keyword   string
+	Level     *int
+	Status    *enum.CategoryStatus
+	Page      int
+	PageSize  int
+	SortField string
+	SortOrder string
 }
 
 // CategoryCreateInput 管理端创建分类时可写字段（绑定 JSON 时用此类型，避免接受伪造 id/时间戳）。

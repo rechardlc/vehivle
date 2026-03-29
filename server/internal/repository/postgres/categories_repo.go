@@ -65,10 +65,57 @@ func (r *CategoryRepo) List(ctx context.Context, q model.CategoryListQuery) ([]*
 	if q.Status != nil {
 		tx = tx.Where("status = ?", *q.Status)
 	}
-	if err := tx.Order("sort_order DESC, updated_at DESC").Find(&categories).Error; err != nil {
+	if q.PageSize > 0 {
+		page := q.Page
+		if page <= 0 {
+			page = 1
+		}
+		offset := (page - 1) * q.PageSize
+		tx = tx.Offset(offset).Limit(q.PageSize)
+	}
+	orderClause := categoryListOrderClause(q)
+	if err := tx.Order(orderClause).Find(&categories).Error; err != nil {
 		return nil, err
 	}
 	return categories, nil
+}
+
+// categoryListOrderClause 列表排序：仅支持 createdAt；否则沿用业务默认（sort_order + updated_at）。
+func categoryListOrderClause(q model.CategoryListQuery) string {
+	if strings.TrimSpace(q.SortField) == "createdAt" {
+		if strings.ToLower(strings.TrimSpace(q.SortOrder)) == "asc" {
+			return "created_at ASC"
+		}
+		return "created_at DESC"
+	}
+	return "sort_order DESC, updated_at DESC"
+}
+
+// 获取分类数量: 用于分页查询
+func (c *CategoryRepo) Count(ctx context.Context, q model.CategoryListQuery) (int64, error) {
+	var count int64
+	// 使用事务
+	// Model: 指定模型,通过只在执行更新时调用
+	// WithContext: 使用上下文管理数据库连接
+	// Where: 查询条件
+	// Count: 获取数量
+	tx := c.db.WithContext(ctx).Model(&model.Category{})
+	if kw := strings.TrimSpace(q.Keyword); kw != "" {
+		// 使用 like 查询,避免 ILIKE 通配符与用户输入中的 %/_ 语义冲突。
+		// 非pgsql专属，可以迁移到其他数据库
+		// position(lower(?) in lower(name)) > 0: 查询条件为：name 字段中包含 kw 字符串的位置大于0
+		tx = tx.Where("lower(name) like ?", "%"+kw+"%")
+	}
+	if q.Level != nil {
+		tx = tx.Where("level = ?", *q.Level)
+	}
+	if q.Status != nil {
+		tx = tx.Where("status = ?", *q.Status)
+	}
+	if err := tx.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 /**

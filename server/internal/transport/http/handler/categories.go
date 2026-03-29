@@ -53,23 +53,61 @@ func validateResolvedCategory(in model.CategoryCreateInput) error {
 	return nil
 }
 
-// categoryListQueryParams 绑定 GET /admin/categories 的 query（keyword、level、status 均可选）。
+// categoryListQueryParams 绑定 GET /admin/categories 的 query（keyword、level、status、page、pageSize、sortField、sortOrder 均可选）。
 type categoryListQueryParams struct {
-	Keyword string `form:"keyword"`
-	Level   *int   `form:"level"`
-	Status  *int   `form:"status"`
+	Keyword   string `form:"keyword"`   // 分类名称
+	Level     *int   `form:"level"`     // 分类层级
+	Status    *int   `form:"status"`    // 分类状态
+	Page      int    `form:"page"`      // 分页页码
+	PageSize  int    `form:"pageSize"`  // 分页大小
+	SortField string `form:"sortField"` // 排序字段
+	SortOrder string `form:"sortOrder"` // 排序顺序
 }
 
 /**
  * 获取分类列表
  */
 func (c *Categories) List(ctx *gin.Context) {
+	// validFields := []string{"keyword", "level", "status", "page", "pageSize", "sortField", "sortOrder"}
+	// if ok, err := helper.IsValidFields(ctx, validFields); !ok {
+	// 	response.FailParam(ctx, err.Error())
+	// 	return
+	// }
 	var raw categoryListQueryParams
+	// 使用ShouldBindQuery绑定请求体
 	if err := ctx.ShouldBindQuery(&raw); err != nil {
 		response.FailParam(ctx, err.Error())
 		return
 	}
-	q := model.CategoryListQuery{Keyword: strings.TrimSpace(raw.Keyword), Level: raw.Level}
+	// 查询字段白名单: 只能categoryListQueryParams的字段通过
+	// 从ctx中取字段，是否在validFields中，不在则返回错误
+	// validFields := [7]string{"keyword", "level", "status", "page", "pageSize", "sortField", "sortOrder"}
+	sf := strings.TrimSpace(raw.SortField)
+	so := strings.TrimSpace(strings.ToLower(raw.SortOrder))
+	if sf != "" && sf != "createdAt" {
+		response.FailParam(ctx, "无效的 sortField，仅支持 createdAt")
+		return
+	}
+	if so != "" && so != "asc" && so != "desc" {
+		response.FailParam(ctx, "无效的 sortOrder，仅支持 asc 或 desc")
+		return
+	}
+	if sf == "" && so != "" {
+		response.FailParam(ctx, "传 sortOrder 时必须同时传 sortField=createdAt")
+		return
+	}
+	if sf == "createdAt" && so == "" {
+		so = "desc"
+	}
+
+	q := model.CategoryListQuery{
+		Keyword:   strings.TrimSpace(raw.Keyword),
+		Level:     raw.Level,
+		Page:      raw.Page,
+		PageSize:  raw.PageSize,
+		SortField: sf,
+		SortOrder: so,
+	}
 	if raw.Status != nil {
 		st := enum.CategoryStatus(*raw.Status)
 		if st != enum.CategoryStatusDisabled && st != enum.CategoryStatusEnabled {
@@ -78,24 +116,24 @@ func (c *Categories) List(ctx *gin.Context) {
 		}
 		q.Status = &st
 	}
-	items, err := c.CategoryService.List(ctx.Request.Context(), q)
+	result, err := c.CategoryService.List(ctx.Request.Context(), q)
 	if err != nil {
 		response.FailBusiness(ctx, err.Error())
 		return
 	}
 	// 为二级分类填充 parentName
-	nameByID := make(map[string]string, len(items))
-	for _, cat := range items {
+	nameByID := make(map[string]string, len(result.List))
+	for _, cat := range result.List {
 		nameByID[cat.ID] = cat.Name
 	}
-	for _, cat := range items {
+	for _, cat := range result.List {
 		if cat.ParentID != nil {
 			if n, ok := nameByID[*cat.ParentID]; ok {
 				cat.ParentName = n
 			}
 		}
 	}
-	response.Success(ctx, items)
+	response.Success(ctx, result)
 }
 
 /**
