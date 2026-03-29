@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"strings"
 
 	"vehivle/internal/domain/model"
 
@@ -23,6 +22,34 @@ func NewCategoryRepo(db *gorm.DB) *CategoryRepo {
 	return &CategoryRepo{db: db}
 }
 
+// applyListFilters 将 keyword / level / status 筛选条件追加到 tx 上，
+// List 和 Count 共用同一份 WHERE 逻辑，确保结果一致。
+// 调用方需保证 q.Keyword 已 TrimSpace（handler 层统一处理）。
+func applyListFilters(tx *gorm.DB, q model.CategoryListQuery) *gorm.DB {
+	if q.Keyword != "" {
+		// position(lower(?) in lower(name))：精确子串匹配，避免 LIKE 通配符 %/_ 与用户输入冲突
+		tx = tx.Where("position(lower(?) in lower(name)) > 0", q.Keyword)
+	}
+	if q.Level != nil {
+		tx = tx.Where("level = ?", *q.Level)
+	}
+	if q.Status != nil {
+		tx = tx.Where("status = ?", *q.Status)
+	}
+	return tx
+}
+
+// categoryListOrderClause 列表排序：仅支持 createdAt；否则沿用业务默认（sort_order + updated_at）。
+// 调用方需保证 SortField / SortOrder 已 TrimSpace + ToLower（handler 层统一处理）。
+func categoryListOrderClause(q model.CategoryListQuery) string {
+	if q.SortField == "createdAt" {
+		if q.SortOrder == "asc" {
+			return "created_at ASC"
+		}
+		return "created_at DESC"
+	}
+	return "sort_order DESC, updated_at DESC"
+}
 /**
  * 根据ID获取分类
  */
@@ -50,68 +77,27 @@ func (r *CategoryRepo) GetChildListByID(ctx context.Context, id string) ([]*mode
 
 /**
  * 获取分类列表（可选 keyword / level / status，与 GET 查询参数一致）。
+ * 所有参数（page / keyword trim / sort 等）由 handler 层统一处理后传入，此处直接使用。
  */
 func (r *CategoryRepo) List(ctx context.Context, q model.CategoryListQuery) ([]*model.Category, error) {
+	// 应用筛选条件
 	var categories []*model.Category
-	tx := r.db.WithContext(ctx).Model(&model.Category{})
-	// FE analogy: SQL WHERE 链式叠加，类似在 TS 里对数组多次 .filter。
-	// Go detail: substring 用 position + lower，避免 ILIKE 通配符与用户输入中的 %/_ 语义冲突。
-	if kw := strings.TrimSpace(q.Keyword); kw != "" {
-		tx = tx.Where("position(lower(?) in lower(name)) > 0", kw)
-	}
-	if q.Level != nil {
-		tx = tx.Where("level = ?", *q.Level)
-	}
-	if q.Status != nil {
-		tx = tx.Where("status = ?", *q.Status)
-	}
+	tx := applyListFilters(r.db.WithContext(ctx).Model(&model.Category{}), q)
+	// 应用分页条件
 	if q.PageSize > 0 {
-		page := q.Page
-		if page <= 0 {
-			page = 1
-		}
-		offset := (page - 1) * q.PageSize
+		offset := (q.Page - 1) * q.PageSize
 		tx = tx.Offset(offset).Limit(q.PageSize)
 	}
-	orderClause := categoryListOrderClause(q)
-	if err := tx.Order(orderClause).Find(&categories).Error; err != nil {
+	if err := tx.Order(categoryListOrderClause(q)).Find(&categories).Error; err != nil {
 		return nil, err
 	}
 	return categories, nil
 }
 
-// categoryListOrderClause 列表排序：仅支持 createdAt；否则沿用业务默认（sort_order + updated_at）。
-func categoryListOrderClause(q model.CategoryListQuery) string {
-	if strings.TrimSpace(q.SortField) == "createdAt" {
-		if strings.ToLower(strings.TrimSpace(q.SortOrder)) == "asc" {
-			return "created_at ASC"
-		}
-		return "created_at DESC"
-	}
-	return "sort_order DESC, updated_at DESC"
-}
-
-// 获取分类数量: 用于分页查询
-func (c *CategoryRepo) Count(ctx context.Context, q model.CategoryListQuery) (int64, error) {
+// Count 获取满足筛选条件的分类总数，用于分页计算。
+func (r *CategoryRepo) Count(ctx context.Context, q model.CategoryListQuery) (int64, error) {
 	var count int64
-	// 使用事务
-	// Model: 指定模型,通过只在执行更新时调用
-	// WithContext: 使用上下文管理数据库连接
-	// Where: 查询条件
-	// Count: 获取数量
-	tx := c.db.WithContext(ctx).Model(&model.Category{})
-	if kw := strings.TrimSpace(q.Keyword); kw != "" {
-		// 使用 like 查询,避免 ILIKE 通配符与用户输入中的 %/_ 语义冲突。
-		// 非pgsql专属，可以迁移到其他数据库
-		// position(lower(?) in lower(name)) > 0: 查询条件为：name 字段中包含 kw 字符串的位置大于0
-		tx = tx.Where("lower(name) like ?", "%"+kw+"%")
-	}
-	if q.Level != nil {
-		tx = tx.Where("level = ?", *q.Level)
-	}
-	if q.Status != nil {
-		tx = tx.Where("status = ?", *q.Status)
-	}
+	tx := applyListFilters(r.db.WithContext(ctx).Model(&model.Category{}), q)
 	if err := tx.Count(&count).Error; err != nil {
 		return 0, err
 	}

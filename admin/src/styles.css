@@ -229,8 +229,22 @@ body {
     linear-gradient(170deg, rgba(255, 255, 255, 0.72), rgba(242, 246, 252, 0.78)),
     var(--panel-top) !important;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   overscroll-behavior: contain;
+}
+
+/**
+ * 路由出口：默认纵向可滚动（长表单/仪表盘等）；分类等列表页内部根节点可占满高度并自行处理表体滚动。
+ */
+.admin-route-outlet {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .page-card.ant-card {
@@ -261,6 +275,41 @@ body {
 .page-card .ant-card-body {
   position: relative;
   z-index: 1;
+}
+
+/* 分类管理：整页占满路由出口，仅表格区域纵向滚动 */
+.categories-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.categories-page .page-card.ant-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.categories-page .page-card .ant-card-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.categories-page-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.categories-page .categories-page-filter-bar {
+  flex-shrink: 0;
 }
 
 .page-card-title {

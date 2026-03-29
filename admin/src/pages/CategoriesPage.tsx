@@ -17,7 +17,7 @@ import {
 } from "antd";
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CategoryListParams, CategoryListResponse } from "../api/categories";
 import { categoriesApi } from "../api/categories";
 import { PageCard } from "../components/PageCard";
@@ -72,6 +72,37 @@ export function CategoriesPage() {
   const [listPageSize, setListPageSize] = useState(DEFAULT_CATEGORY_LIST_PAGE_SIZE);
   /** 创建时间列排序：为 null 时不传 sortField/sortOrder，走后端默认序；有值时传 createdAt + asc/desc */
   const [createdAtSortOrder, setCreatedAtSortOrder] = useState<"ascend" | "descend" | null>(null);
+
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState<number | undefined>(undefined);
+
+  /**
+   * 监听表格容器高度，动态计算 Ant Design Table 的 scroll.y。
+   * scroll.y = 容器高度 - 表头高度 - 分页器高度（含 margin），仅让 tbody 滚动。
+   */
+  useEffect(() => {
+    const wrap = tableWrapRef.current;
+    if (wrap === null) return undefined;
+
+    const recalc = (): void => {
+      const wrapH = wrap.getBoundingClientRect().height;
+      const thead = wrap.querySelector<HTMLElement>(".ant-table-header, .ant-table-thead");
+      const pager = wrap.querySelector<HTMLElement>(".ant-table-pagination");
+      const theadH = thead?.offsetHeight ?? 55;
+      const pagerH = pager !== null ? pager.offsetHeight + parseFloat(getComputedStyle(pager).marginTop || "0") + parseFloat(getComputedStyle(pager).marginBottom || "0") : 56;
+      const next = Math.max(100, Math.floor(wrapH - theadH - pagerH));
+      setTableScrollY((prev) => (prev === next ? prev : next));
+    };
+
+    const frame = requestAnimationFrame(recalc);
+    const ro = new ResizeObserver(recalc);
+    ro.observe(wrap);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+    };
+  }, []);
+
 
   /** 与后端 CategoryListParams 对齐（默认不传排序参数） */
   const listParams: CategoryListParams = useMemo(() => {
@@ -299,160 +330,165 @@ export function CategoriesPage() {
   }
 
   return (
-    <PageCard
-      title="分类管理"
-      extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>
-          新建分类
-        </Button>
-      }
-    >
-      <Space key={filterResetKey} wrap className="categories-page-filter-bar" style={{ marginBottom: 16 }}>
-        <Input
-          allowClear
-          placeholder="请输入分类名称"
-          style={{ width: 240 }}
-          value={draftFilter.keyword ?? ""}
-          onChange={(e) => {
-            const keyword = e.target.value;
-            setDraftFilter((prev) => ({ ...prev, keyword: keyword === "" ? undefined : keyword }));
-          }}
-        />
-        <Select
-          allowClear
-          placeholder="请选择层级"
-          style={{ width: 160 }}
-          options={levelFilterOptions}
-          value={draftFilter.level}
-          onChange={(level) => setDraftFilter((prev) => ({ ...prev, level }))}
-        />
-        <Select
-          allowClear
-          placeholder="请选择状态"
-          style={{ width: 160 }}
-          options={statusFilterOptions}
-          value={draftFilter.status}
-          onChange={(status) => setDraftFilter((prev) => ({ ...prev, status }))}
-        />
-        <Button type="primary" icon={<SearchOutlined />} loading={listQuery.isFetching} onClick={handleQuery}>
-          查询
-        </Button>
-        <Button icon={<ReloadOutlined />} loading={listQuery.isFetching} onClick={handleRefreshList}>
-          重置
-        </Button>
-      </Space>
-
-      <Table<Category>
-        rowKey="id"
-        loading={listQuery.isLoading}
-        dataSource={listQuery.data?.list ?? []}
-        onChange={onTableChange}
-        pagination={{
-          current: listPage,
-          pageSize: listPageSize,
-          total: listQuery.data?.page.total ?? 0,
-          showSizeChanger: true,
-          pageSizeOptions: [...CATEGORY_LIST_PAGE_SIZE_OPTIONS],
-          showTotal: (total) => `共 ${total} 条`
-        }}
-        columns={[
-          { title: "分类名称", dataIndex: "name" },
-          { title: "层级", dataIndex: "level", render: (level: number) => `L${level}` },
-          { title: "父级分类", dataIndex: "parentName" },
-          { title: "排序值", dataIndex: "sortOrder", width: 100 },
-          {
-            title: "创建时间",
-            key: "createdAt",
-            dataIndex: "createdAt",
-            width: 180,
-            sorter: true,
-            sortOrder: createdAtSortOrder ?? undefined,
-            sortDirections: ["descend", "ascend"],
-            render: (v: Category["createdAt"]) => (v ? dayjs(v).format("YYYY-MM-DD HH:mm:ss") : "—")
-          },
-          {
-            title: "状态",
-            dataIndex: "status",
-            width: 140,
-            render: (_: Category["status"], record: Category) => (
-              <Switch
-                checked={record.status === 1}
-                checkedChildren="启用"
-                unCheckedChildren="停用"
-                onChange={(checked) => onTableStatusChange(record, checked)}
-              />
-            )
-          },
-          {
-            title: "操作",
-            width: 220,
-            render: (_, record: Category) => (
-              <Space>
-                <Button size="small" onClick={() => onEdit(record)}>
-                  编辑
-                </Button>
-                <Popconfirm title="确定删除该分类吗？" onConfirm={() => deleteMutation.mutate(record.id)}>
-                  <Button size="small" danger icon={<DeleteOutlined />}>
-                    删除
-                  </Button>
-                </Popconfirm>
-              </Space>
-            )
-          }
-        ]}
-      />
-
-      <Modal
-        title={editing ? "编辑分类" : "新建分类"}
-        open={open}
-        onCancel={closeModal}
-        onOk={() => form.submit()}
-        confirmLoading={createMutation.isPending || updateMutation.isPending}
-        destroyOnHidden
+    <div className="categories-page">
+      <PageCard
+        title="分类管理"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>
+            新建分类
+          </Button>
+        }
       >
-        <Form form={form} layout="vertical" onFinish={onSubmit}>
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item name="name" label="分类名称" rules={[{ required: true, message: "请输入分类名称" }]}>
-                <Input placeholder="请输入分类名称" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="level" label="层级" rules={[{ required: true, message: "请选择层级" }]}>
-                <Select
-                  placeholder="请选择分类层级"
-                  options={[
-                    { label: "一级分类", value: 1 },
-                    { label: "二级分类", value: 2 }
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.level !== curr.level}>
-              {({ getFieldValue }) =>
-                getFieldValue("level") === 2 ? (
-                  <Col xs={24} md={12}>
-                    <Form.Item name="parentId" label="父级分类" rules={[{ required: true, message: "二级分类必须选择父级" }]}>
-                      <Select placeholder="请选择父级分类" options={level1Options} />
-                    </Form.Item>
-                  </Col>
-                ) : null
+        <Space key={filterResetKey} wrap className="categories-page-filter-bar" style={{ marginBottom: 16 }}>
+          <Input
+            allowClear
+            placeholder="请输入分类名称"
+            style={{ width: 240 }}
+            value={draftFilter.keyword ?? ""}
+            onChange={(e) => {
+              const keyword = e.target.value;
+              setDraftFilter((prev) => ({ ...prev, keyword: keyword === "" ? undefined : keyword }));
+            }}
+          />
+          <Select
+            allowClear
+            placeholder="请选择层级"
+            style={{ width: 160 }}
+            options={levelFilterOptions}
+            value={draftFilter.level}
+            onChange={(level) => setDraftFilter((prev) => ({ ...prev, level }))}
+          />
+          <Select
+            allowClear
+            placeholder="请选择状态"
+            style={{ width: 160 }}
+            options={statusFilterOptions}
+            value={draftFilter.status}
+            onChange={(status) => setDraftFilter((prev) => ({ ...prev, status }))}
+          />
+          <Button type="primary" icon={<SearchOutlined />} loading={listQuery.isFetching} onClick={handleQuery}>
+            查询
+          </Button>
+          <Button icon={<ReloadOutlined />} loading={listQuery.isFetching} onClick={handleRefreshList}>
+            重置
+          </Button>
+        </Space>
+
+        <div ref={tableWrapRef} className="categories-page-table-wrap">
+          <Table<Category>
+            rowKey="id"
+            loading={listQuery.isLoading}
+            dataSource={listQuery.data?.list ?? []}
+            onChange={onTableChange}
+            scroll={tableScrollY !== undefined ? { y: tableScrollY } : undefined}
+            pagination={{
+              current: listPage,
+              pageSize: listPageSize,
+              total: listQuery.data?.page.total ?? 0,
+              showSizeChanger: true,
+              pageSizeOptions: [...CATEGORY_LIST_PAGE_SIZE_OPTIONS],
+              showTotal: (total) => `共 ${total} 条`
+            }}
+            columns={[
+              { title: "分类名称", dataIndex: "name" },
+              { title: "层级", dataIndex: "level", render: (level: number) => `L${level}` },
+              { title: "父级分类", dataIndex: "parentName" },
+              { title: "排序值", dataIndex: "sortOrder", width: 100 },
+              {
+                title: "创建时间",
+                key: "createdAt",
+                dataIndex: "createdAt",
+                width: 180,
+                sorter: true,
+                sortOrder: createdAtSortOrder ?? undefined,
+                sortDirections: ["descend", "ascend"],
+                render: (v: Category["createdAt"]) => (v ? dayjs(v).format("YYYY-MM-DD HH:mm:ss") : "—")
+              },
+              {
+                title: "状态",
+                dataIndex: "status",
+                width: 140,
+                render: (_: Category["status"], record: Category) => (
+                  <Switch
+                    checked={record.status === 1}
+                    checkedChildren="启用"
+                    unCheckedChildren="停用"
+                    onChange={(checked) => onTableStatusChange(record, checked)}
+                  />
+                )
+              },
+              {
+                title: "操作",
+                width: 220,
+                render: (_, record: Category) => (
+                  <Space>
+                    <Button size="small" onClick={() => onEdit(record)}>
+                      编辑
+                    </Button>
+                    <Popconfirm title="确定删除该分类吗？" onConfirm={() => deleteMutation.mutate(record.id)}>
+                      <Button size="small" danger icon={<DeleteOutlined />}>
+                        删除
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                )
               }
-            </Form.Item>
-            <Col xs={24} md={12}>
-              <Form.Item name="sortOrder" label="排序值" rules={[{ required: true, message: "请输入排序值" }]}>
-                <InputNumber style={{ width: "100%" }} min={0} placeholder="请输入排序值" />
+            ]}
+          />
+        </div>
+
+        <Modal
+          title={editing ? "编辑分类" : "新建分类"}
+          open={open}
+          onCancel={closeModal}
+          onOk={() => form.submit()}
+          confirmLoading={createMutation.isPending || updateMutation.isPending}
+          destroyOnHidden
+        >
+          <Form form={form} layout="vertical" onFinish={onSubmit}>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item name="name" label="分类名称" rules={[{ required: true, message: "请输入分类名称" }]}>
+                  <Input placeholder="请输入分类名称" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="level" label="层级" rules={[{ required: true, message: "请选择层级" }]}>
+                  <Select
+                    placeholder="请选择分类层级"
+                    options={[
+                      { label: "一级分类", value: 1 },
+                      { label: "二级分类", value: 2 }
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+              <Form.Item noStyle shouldUpdate={(prev, curr) => prev.level !== curr.level}>
+                {({ getFieldValue }) =>
+                  getFieldValue("level") === 2 ? (
+                    <Col xs={24} md={12}>
+                      <Form.Item name="parentId" label="父级分类" rules={[{ required: true, message: "二级分类必须选择父级" }]}>
+                        <Select placeholder="请选择父级分类" options={level1Options} />
+                      </Form.Item>
+                    </Col>
+                  ) : null
+                }
               </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="statusEnabled" label="是否启用" valuePropName="checked">
-                <Switch />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
-    </PageCard>
+              <Col xs={24} md={12}>
+                <Form.Item name="sortOrder" label="排序值" rules={[{ required: true, message: "请输入排序值" }]}>
+                  <InputNumber style={{ width: "100%" }} min={0} placeholder="请输入排序值" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="statusEnabled" label="是否启用" valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Modal>
+      </PageCard>
+    </div>
   );
 }
 

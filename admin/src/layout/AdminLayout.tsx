@@ -89,7 +89,9 @@ export function AdminLayout() {
             </Space>
           </Header>
           <Content className="admin-content">
-            <Outlet />
+            <div className="admin-route-outlet">
+              <Outlet />
+            </div>
           </Content>
         </Layout>
       </Layout>

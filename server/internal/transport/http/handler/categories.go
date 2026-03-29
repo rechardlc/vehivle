@@ -14,6 +14,12 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	DEFAULT_CATEGORY_LIST_PAGE = 1
+	DEFAULT_CATEGORY_LIST_PAGE_SIZE = 10
+	MAX_CATEGORY_LIST_PAGE_SIZE = 100
+)
+
 type Categories struct {
 	DB              *gorm.DB                  // 数据库连接
 	CategoryService *category.CategoryService // 分类服务
@@ -35,18 +41,23 @@ func NewCategories(db *gorm.DB) *Categories {
 // validateResolvedCategory 校验「已确定」的分类字段：状态、名称、排序、层级、二级父级。
 // 创建时传入 body；更新时在合并 patch 与 existing 后传入最终 CategoryCreateInput。
 func validateResolvedCategory(in model.CategoryCreateInput) error {
+	// 校验状态
 	if in.Status != enum.CategoryStatusDisabled && in.Status != enum.CategoryStatusEnabled {
 		return errors.New("无效的状态，必须是0或1")
 	}
+	// 校验名称
 	if in.Name == "" {
 		return errors.New("名称不能为空")
 	}
+	// 校验排序
 	if in.SortOrder <= 0 {
 		return errors.New("排序不能小于等于0")
 	}
+	// 校验层级
 	if in.Level != 1 && in.Level != 2 {
 		return errors.New("层级必须是1或2")
 	}
+	// 校验二级父级
 	if in.Level == 2 && (in.ParentID == nil || *in.ParentID == "") {
 		return errors.New("二级分类必须选择父级")
 	}
@@ -68,11 +79,6 @@ type categoryListQueryParams struct {
  * 获取分类列表
  */
 func (c *Categories) List(ctx *gin.Context) {
-	// validFields := []string{"keyword", "level", "status", "page", "pageSize", "sortField", "sortOrder"}
-	// if ok, err := helper.IsValidFields(ctx, validFields); !ok {
-	// 	response.FailParam(ctx, err.Error())
-	// 	return
-	// }
 	var raw categoryListQueryParams
 	// 使用ShouldBindQuery绑定请求体
 	if err := ctx.ShouldBindQuery(&raw); err != nil {
@@ -100,10 +106,25 @@ func (c *Categories) List(ctx *gin.Context) {
 		so = "desc"
 	}
 
+	// 如果page小于1，则设置为1
+	page := raw.Page
+	if page <= 0 {
+		page = DEFAULT_CATEGORY_LIST_PAGE
+	}
+	// 如果pageSize小于1，则设置为DEFAULT_CATEGORY_LIST_PAGE_SIZE
+	pageSize := raw.PageSize
+	if pageSize <= 0 {
+		pageSize = DEFAULT_CATEGORY_LIST_PAGE_SIZE
+	}
+	// 如果pageSize大于MAX_CATEGORY_LIST_PAGE_SIZE，则设置为MAX_CATEGORY_LIST_PAGE_SIZE
+	if pageSize > MAX_CATEGORY_LIST_PAGE_SIZE {
+		response.FailParam(ctx, "pageSize 不能大于100")
+		return
+	}
 	q := model.CategoryListQuery{
 		Keyword:   strings.TrimSpace(raw.Keyword),
 		Level:     raw.Level,
-		Page:      raw.Page,
+		Page:      page,
 		PageSize:  raw.PageSize,
 		SortField: sf,
 		SortOrder: so,
@@ -140,12 +161,14 @@ func (c *Categories) List(ctx *gin.Context) {
  * 创建分类
  */
 func (c *Categories) Create(ctx *gin.Context) {
+	// 绑定请求体
 	var body model.CategoryCreateInput
 	// 使用ShouldBindJSON绑定请求体
 	if err := ctx.ShouldBindJSON(&body); err != nil {
 		response.FailBusiness(ctx, err.Error())
 		return
 	}
+	// 校验分类
 	if err := validateResolvedCategory(body); err != nil {
 		response.FailBusiness(ctx, err.Error())
 		return
@@ -170,7 +193,7 @@ func (c *Categories) Create(ctx *gin.Context) {
  */
 func (c *Categories) Update(ctx *gin.Context) {
 	id := ctx.Param("category_id")
-	// 获取分类
+	// 按主键查询单条分类（管理端编辑/更新前拉取当前数据）。
 	existing, err := c.CategoryService.GetById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -180,7 +203,9 @@ func (c *Categories) Update(ctx *gin.Context) {
 		response.FailBusiness(ctx, err.Error())
 		return
 	}
-	// 绑定请求体
+	// 部分更新请求体；指针字段表示「本次是否提交该键」（类似 TS Partial + 仅发送变更字段）。
+	// FE analogy: Pick<Category, 'name' | ...> 里每个键都是可选的，未传的键保持数据库原值。
+	// Go detail: 用 *T 区分「未出现」与「出现」；JSON null 对 *string 会解成 nil，与「未传」在指针层面同为 nil，二级 parentId 清空需后续若需要可改用自定义类型。
 	var body model.CategoryUpdateBody
 	if err := ctx.ShouldBindJSON(&body); err != nil {
 		response.FailBusiness(ctx, err.Error())
