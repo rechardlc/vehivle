@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)（最新：MinIO 对象存储集成、图片上传全链路、Bootstrap 生命周期扩展）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)、[lesson-20260409.md](./lesson-20260409.md)（最新：**media_assets**、车型写接口与封面 URL）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -11,7 +11,7 @@
 | 1 | 第 1 步：工程壳（configs、logger、response、main、bootstrap） | ✅ 已完成 |
 | 2 | 第 2 步：HTTP 基座（路由分组、router、handler、NoRoute/NoMethod 通配、完整中间件链） | ✅ 已完成 |
 | 3 | 第 3 步：业务语义（domain/model、enum、rule） | ✅ 已完成 |
-| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移、`000001`/`000002`；✅ `VehicleRepo`：`GetById`/`Update`/`List`/`Create`；✅ `CategoryRepo`：CRUD 全链路；⏳ 车型 `Update`/`Delete`、分页与参数校验） |
+| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移 **`000001`/`000002`/`000003`**（含 **media_assets**）；✅ `VehicleRepo`：`GetById`/`Update`/`List`/`Create`；✅ `CategoryRepo`：CRUD 全链路；✅ 车型 **Update/Delete**（逻辑删除）已接 Service；⏳ 分页与参数校验） |
 | 4.5 | 第 4.5 步：对象存储（媒体上传） | ✅ 已完成（MinIO 客户端封装、Bootstrap 连接池、Bucket 自动创建、图片上传 Handler、前端直传适配） |
 | 5 | 第 5 步：认证闭环 | 待开始 |
 | 6 | 第 6～12 步 | 待开始 |
@@ -27,10 +27,10 @@
 | 2 | configs、logger、response、main 启动、中间件 | ✅ 已完成 |
 | 3 | bootstrap 抽取、路由分组（admin/public）、完整中间件链 | ✅ 已完成 |
 | 4 | domain 建模（enum、model、rule） | ✅ 已完成 |
-| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移、车型/分类 List 读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD 全链路；⏳ 车型 Update/Delete、分页、事务） |
+| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移至 **`000003`**、车型/分类读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD；✅ 车型 Update/逻辑 Delete；✅ **MediaAssetRepo**；⏳ 分页、事务） |
 | 5.5 | 对象存储（MinIO/S3） | ✅ 已完成（客户端封装、连接池、Bucket 管理、图片上传 Handler、Docker MinIO 服务） |
 | 6 | 认证与权限（JWT、RBAC） | 待开始 |
-| 7 | 核心业务域（分类、车型、媒体等） | 进行中（✅ 分类 CRUD + 状态枚举 + parentName；✅ 图片上传（MinIO 直传）；⏳ 车型完整 CRUD） |
+| 7 | 核心业务域（分类、车型、媒体等） | 进行中（✅ 分类 CRUD + 状态枚举 + parentName；✅ 上传 **MinIO + media_assets 落库**；✅ 车型 **List/Create/Update/Delete/Publish/Unpublish/Duplicate/Batch**；⏳ 认证后上传） |
 | 8 | 缓存、性能、异常兜底 | 待开始 |
 | 9 | 测试与质量门禁 | 待开始 |
 | 10 | 部署与上线 | 待开始 |
@@ -43,27 +43,30 @@
 main ✅
   └─ Bootstrap ✅ (cfg → logger → DB → Ping → OSS → router)
        └─ Router ✅ (admin/public 分组, health, 404/405)
-            ├─ Handler（车型）✅ List/Create 已接通；⏳ Update/Delete 仍为占位
-            │    └─ Service ✅ (VehicleRepo 接口 + Publish + List + Create)
-            │         └─ Repository ✅ GetById / Update / List / Create（⏳ Delete 待补）
+            ├─ Handler（车型）✅ List/Create/Update/逻辑 Delete/Publish/Unpublish/Duplicate/Batch
+            │    └─ Service ✅ (GetById、UpdateVehicle、SoftDelete、Publish、Unpublish、Duplicate、BatchSetStatus、List、Create)
+            │         └─ Repository ✅ VehicleRepo：GetById / Update / List / Create
             │              └─ *gorm.DB ✅
-            ├─ Handler（分类）✅ List/Create 已接通
-            │    └─ Service ✅ (CategoryRepo 接口 + List/Create/Update/Delete)
+            │    └─ MediaAssetRepo ✅ MapStorageKeysByIDs（列表拼 coverImageUrl）
+            ├─ Handler（分类）✅ List/Create/Update/Delete
+            │    └─ Service ✅ (CategoryRepo 接口 + CRUD)
             │         └─ Repository ✅ CRUD 全链路
             │              └─ *gorm.DB ✅
             └─ Handler（上传）✅ POST /admin/upload/images
-                 └─ oss.MinioClient ✅ (PutObject → MinIO/S3)
+                 ├─ oss.MinioClient ✅ PutObject
+                 └─ *gorm.DB ✅ INSERT media_assets（返回 id / url / storageKey）
 ```
 
 ### 待办 / 断裂点
 
 | # | 问题 | 文件 |
 |---|------|------|
-| 1 | 车型 `Update`/`Delete` 未接 Service / DB | `handler/vehicles.go` |
-| 2 | `VehicleRepo` 尚无 `Delete`（及分页） | `repository/postgres/vehicle_repo.go` |
-| 3 | 分类 `Update`/`Delete` | ✅ 已接通（PATCH 体为指针字段，见 [lesson-20260325](./lesson-20260325.md)） |
+| 1 | 车型列表/管理端 **分页** 仍由前端 slice（未走后端 page） | `handler/vehicles.go`、`admin` |
+| 2 | `VehicleRepo` 无独立 **物理 Delete**（当前为 **逻辑删除** `status=deleted`） | 按产品决定是否补硬删 |
+| 3 | 分类 `Update`/`Delete` | ✅ 已接通（见 [lesson-20260325](./lesson-20260325.md)） |
 | 4 | User 模块无 Service / Repository 层 | `handler/user.go` |
 | 5 | 上传接口未挂载认证中间件 | `router/router.go`（TODO 标注） |
+| 6 | **media / OSS GC**（无引用对象清理） | 未实现 |
 
 ---
 
@@ -79,16 +82,16 @@ server/
 ├── cmd/migrate/        # 数据库迁移 CLI ✅（iofs）
 ├── configs/            # 配置 ✅
 ├── deploy/docker/      # 本地 PG/Redis/MinIO Compose ✅
-├── migrations/         # SQL 迁移 ✅（000001 主表、000002 categories 等）
+├── migrations/         # SQL 迁移 ✅（000001 / 000002 / 000003 media_assets）
 ├── internal/bootstrap/ # 依赖装配 ✅
 ├── internal/infrastructure/postgres/ # Postgres 连接 ✅
 ├── internal/infrastructure/oss/     # MinIO/S3 客户端 ✅
 ├── internal/domain/    # 领域语义 ✅（enum / model / rule）
-├── internal/service/vehicle/ # 业务服务 ✅（接口 + Publish 逻辑）
-├── internal/repository/postgres/ # 数据仓储 ✅（车型：GetById、Update、List）
+├── internal/service/vehicle/ # 业务服务 ✅（GetById、写接口、Publish、Unpublish、Duplicate、Batch）
+├── internal/repository/postgres/ # 数据仓储 ✅（VehicleRepo、MediaAssetRepo、CategoryRepo）
 ├── internal/transport/http/
 │   ├── router/         # 路由 ✅
-│   ├── handler/        # 处理器 ⏳（车型 List ✅；上传 ✅；其余方法占位）
+│   ├── handler/        # 处理器 ✅（车型全量写读、上传写 media_assets）
 │   └── middleware/     # 中间件 ✅（ValidateParams 参数白名单）
 ├── pkg/
 │   ├── logger/         # 日志 ✅
@@ -101,18 +104,32 @@ server/
 ## 五、下一步建议（对齐 [循序渐进总说明](../循序渐进总说明.md) 第 4～5 步）
 
 1. **上传认证**：`POST /admin/upload/images` 当前无鉴权中间件（已标 TODO），上线前必须挂载 JWT 认证。
-2. **车型写操作**：为 `VehicleRepo` 增加 `Delete`（及需要的 DTO），Handler 中 `Update`/`Delete` 调用 Service。
+2. **后端分页**：管理端车型列表改为 SQL `LIMIT/OFFSET` 或游标，与 admin 筛选对齐。
 3. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
-4. **domain / rule**：扩展下架、删除规则，与 `vehicles.status` CHECK 一致。
+4. **domain / rule**：按产品收紧 `Publish` 的详情图/参数校验（当前 MVP 可放宽）。
 5. **第 5 步认证**：登录、JWT、RBAC（见 [learning-path 阶段 4](../learning-path/go-backend-learning-roadmap.md)）。
 6. **（可选）** 优雅关闭时 `postgres.Close`；GORM SQL 日志接入统一 logger。
-7. **（可选）** 图片上传扩展：多图上传、图片压缩/缩略图、签名 URL（`SignExpire` 已预留）。
+7. **（可选）** 媒体 GC：无引用 `media_assets` + 对应 OSS 对象清理任务。
 
 ---
 
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-04-09
+
+- **完成**：迁移 **`000003`** —— 表 **`media_assets`**（`storage_key` UNIQUE、`asset_type`、`created_at`）
+- **完成**：**上传后写库** —— `PutObject` 成功后 `INSERT media_assets`，响应 **`{ id, url, storageKey }`**；`NewUpload(oss, db)`
+- **完成**：**领域** —— `model.MediaAsset`；`Vehicle.CoverImageURL`（`gorm:"-"`）；`Vehicle` 列 tag + `TableName()`
+- **完成**：**MediaAssetRepo** —— `MapStorageKeysByIDs` 批量补全封面 **`storage_key`**
+- **完成**：**OSS** —— `MinioClient.ObjectPublicURL` 与上传 URL 规则一致
+- **完成**：**VehicleService** —— `GetById`、`VehicleUpdateInput`、`UpdateVehicle`、`SoftDelete`、`Unpublish`、`Duplicate`、`BatchSetStatus`
+- **完成**：**Vehicles Handler** —— `attachCoverImageURLs`；`Update`/`Delete`/`Publish`/`Unpublish`/`Duplicate`/`BatchStatus`；`NewVehicles(db, oss)`
+- **完成**：**Router** —— `POST batch-status`、`publish`、`unpublish`、`duplicate`；`public` 与 admin 共用 `NewVehicles(db, oss)`
+- **完成**：**前端** —— `ImageUploadResult`；`coverMediaId` = 媒体 **UUID**；`previewFromServer` 回显
+- **文档**：新增 [lesson-20260409.md](./lesson-20260409.md)；更新 [README.md](./README.md)、[progress.md](./progress.md) 全链路
+- **明日第一件事**：上传鉴权 JWT；或后端车型分页
 
 ### 2026-04-08
 
@@ -236,4 +253,4 @@ server/
 
 ---
 
-*最后更新：2026-04-08（MinIO 对象存储集成、图片上传全链路、Bootstrap 生命周期扩展、统一响应 RequestID 补全；lesson-20260408 / README / progress 同步）*
+*最后更新：2026-04-09（media_assets、车型写接口与 coverImageUrl；lesson-20260409 / README / progress 同步）*

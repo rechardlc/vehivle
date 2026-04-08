@@ -305,12 +305,16 @@ type Vehicle = {
   id: string
   category_id: string
   name: string
+  /** 对应 media_assets.id（UUID）；展示用 URL 由服务端拼 coverImageUrl */
   cover_media_id: string
+  cover_image_url?: string
   price_mode: "show_price" | "phone_inquiry"
   msrp_price: number
   status: "draft" | "published" | "unpublished" | "deleted"
 }
 ```
+
+> **补充**：`cover_media_id` 在库中为 `TEXT`，存 **媒体表主键**；公开访问地址不强制落库，列表/详情可返回 **`coverImageUrl`**（由 `storage_key` + OSS 公开前缀拼接）。详见 [learn/lesson-20260409.md](./learn/lesson-20260409.md)。
 
 区别是 Go 里的 `Vehicle` 不只是字段，还能挂方法，比如：
 - `Publish()`
