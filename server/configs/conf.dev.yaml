@@ -20,6 +20,8 @@ redis:
 
 oss:
   sign_expire: 3600
+  # 本地 MinIO：允许上传接口返回的直链匿名可读；生产环境务必保持 false（见 conf.prod.yaml）
+  enable_public_read: true
 
 jwt:
   expire_hours: 24

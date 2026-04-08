@@ -355,7 +355,7 @@ export function VehiclesPage() {
             </Col>
             <Col xs={24}>
               <Form.Item name="coverMediaId" label="封面图" rules={[{ required: true, message: "请上传封面图" }]}>
-                <ImageUploader placeholder="请上传车型封面图" />
+                <ImageUploader placeholder="请上传车型封面图" previewFromServer={editing?.coverImageUrl} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>

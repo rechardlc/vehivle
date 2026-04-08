@@ -17,7 +17,12 @@
 - audit_logs
 - system_settings
 
-当前 **`000001_init_schema`** 已创建三张主表：`admin_users`、`vehicles`、`system_settings`；其余表在后续迁移文件中按序追加（**不要**修改已发布环境执行过的旧 `.sql`）。
+当前迁移顺序简述：
+- **`000001_init_schema`**：`admin_users`、`vehicles`、`system_settings`
+- **`000002_add_categories_table`**：`categories`，并与 `vehicles.category_id` 外键对齐
+- **`000003_create_media_assets_table`**：`media_assets`（上传落库元数据，`storage_key` 唯一）
+
+其余规划表在后续迁移中按序追加（**不要**修改已发布环境执行过的旧 `.sql`）。
 
 ## 规范
 - 每次迁移都附带变更说明和回滚策略。

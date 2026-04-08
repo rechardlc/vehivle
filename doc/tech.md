@@ -29,9 +29,9 @@
 | categories | 分类 | id, parent_id, level, name, status, sort_order | 支持一级/二级分类 |
 | param_templates | 参数模板 | id, name, category_id, status | 一级分类绑定模板 |
 | param_template_items | 参数项 | template_id, field_key, field_name, field_type, unit, required, display, sort_order | V1 支持文本/数值/单选 |
-| vehicles | 车型 | id, category_id, name, cover_media_id, price_mode, msrp_price, status, selling_points, sort_order | 状态机 draft/published/unpublished/deleted |
+| vehicles | 车型 | id, category_id, name, cover_media_id, price_mode, msrp_price, status, selling_points, sort_order | cover_media_id 存 **media_assets.id**（UUID）；列表/详情可拼 **coverImageUrl** 展示 |
 | vehicle_param_values | 车型参数值 | vehicle_id, template_item_id, value_text | 模板驱动前端渲染 |
-| media_assets | 媒体资源 | id, storage_key, mime_type, file_size, type | OSS/COS 元数据管理 |
+| media_assets | 媒体资源 | id, storage_key, mime_type, file_size, asset_type, created_at | 上传成功后落库；**不存完整 URL**，展示时由 storage_key + 公开域名拼接 |
 | audit_logs | 审计日志 | id, admin_user_id, action, target_type, target_id, timestamp | 发布/下架/删除 |
 | system_settings | 系统全局配置 | id, company_name, customer_service_phone, customer_service_wechat, default_price_mode, disclaimer_text, default_share_title, default_share_image, created_at, updated_at | 新增全局配置表，用于维护后台系统设置和全局策略 |
 
@@ -39,7 +39,7 @@
 - vehicles: (status, sort_order, updated_at)
 - vehicle_param_values: (vehicle_id, template_item_id)
 - categories: (parent_id, sort_order)
-- media_assets: (storage_key)
+- media_assets: UNIQUE(storage_key)
 - system_settings: (id)
 
 ---
@@ -79,8 +79,7 @@
 | 批量上下架 | POST | /api/v1/admin/vehicles/batch-status | 批量操作 |
 | 预览车型 | GET | /api/v1/admin/vehicles/{id}/preview | 临时 preview_token |
 | 复制车型 | POST | /api/v1/admin/vehicles/{id}/duplicate | 克隆草稿 |
-| 获取上传签名 | POST | /api/v1/admin/media/upload-policy | 前端直传 |
-| 完成上传回写 | POST | /api/v1/admin/media/complete | 保存 metadata |
+| 图片上传 | POST | /api/v1/admin/upload/images | multipart `file`；成功 `data` 含 **id**（media_assets 主键）、**url**、**storageKey** |
 | 分类管理 CRUD | POST/GET/PUT/DELETE | /api/v1/admin/categories | 新增、编辑、删除、排序 |
 | 参数模板 CRUD | POST/GET/PUT/DELETE | /api/v1/admin/param-templates | 模板维护及参数项操作 |
 | 系统设置获取 | GET | /api/v1/admin/system-settings | 获取全局配置 |

@@ -73,8 +73,10 @@ export interface Vehicle {
   id: string;
   categoryId: string;
   name: string;
-  /** 封面图：当前为 OSS 对象键（与上传接口返回的 data 一致） */
+  /** 封面图：media_assets 表主键 UUID（上传接口返回的 id） */
   coverMediaId: string;
+  /** 服务端根据 storage_key 拼接的公网地址，仅展示用 */
+  coverImageUrl?: string;
   priceMode: PriceMode;
   msrpPrice: number;
   status: VehicleStatus;

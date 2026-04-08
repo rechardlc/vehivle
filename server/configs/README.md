@@ -25,6 +25,9 @@
 | oss.secret_key | VEHIVLE_OSS_SECRET_KEY | |
 | oss.bucket | VEHIVLE_OSS_BUCKET | vehivle-media |
 | oss.region | VEHIVLE_OSS_REGION | ap-guangzhou |
+| oss.endpoint | VEHIVLE_OSS_ENDPOINT | http://localhost:9000 |
+| oss.public_url | VEHIVLE_OSS_PUBLIC_URL | 浏览器访问 MinIO 的基址；endpoint 为 Docker 内网主机名时必填 |
+| oss.enable_public_read | VEHIVLE_OSS_ENABLE_PUBLIC_READ | dev 默认 true（YAML）；直链需匿名读时开启 |
 | jwt.secret | VEHIVLE_JWT_SECRET | 32+ 字节密钥 |
 
 ## 文件说明

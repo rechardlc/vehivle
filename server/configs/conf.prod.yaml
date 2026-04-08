@@ -19,6 +19,7 @@ redis:
 
 oss:
   sign_expire: 3600
+  enable_public_read: false
 
 jwt:
   expire_hours: 24

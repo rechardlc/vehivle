@@ -57,6 +57,11 @@ type OssConfig struct {
 	Endpoint   string `mapstructure:"endpoint"`
 	UseSSL     bool   `mapstructure:"use_ssl"`
 	SignExpire int    `mapstructure:"sign_expire"` // 签名 URL 有效期（秒）
+	// PublicURL 浏览器可访问的基址（无路径），如 http://localhost:9000。留空则从 endpoint 推导。
+	// 当 API 在 Docker 内而 endpoint 为 minio:9000 时，必须设为宿主机可访问的 MinIO 地址，否则上传返回的 url 无法在浏览器打开。
+	PublicURL string `mapstructure:"public_url"`
+	// EnablePublicRead 启动时为 Bucket 设置匿名可读（s3:GetObject），使直链无需签名即可访问。生产若用 CDN/签名 URL 请保持 false。
+	EnablePublicRead bool `mapstructure:"enable_public_read"`
 }
 
 // JWTConfig JWT 认证配置。
@@ -157,6 +162,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("oss.bucket", DefaultOSSBucket) // 媒体Bucket： Bucket是存储空间的名称。
 	v.SetDefault("oss.region", DefaultOSSRegion) // 媒体Region： region是存储空间的区域。
 	v.SetDefault("oss.sign_expire", DefaultOSSSignExpire)
+	v.SetDefault("oss.public_url", "")
+	v.SetDefault("oss.enable_public_read", DefaultOSSEnablePublicRead)
 
 	v.SetDefault("jwt.secret", "")
 	v.SetDefault("jwt.expire_hours", DefaultJWTExpireHours)

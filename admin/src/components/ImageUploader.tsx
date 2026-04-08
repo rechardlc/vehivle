@@ -9,6 +9,8 @@ interface ImageUploaderProps {
   onChange?: (value: string) => void;
   placeholder?: string;
   maxSizeMB?: number;
+  /** 编辑回显：接口返回的 coverImageUrl（value 为 media id 时用于预览） */
+  previewFromServer?: string;
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -24,7 +26,8 @@ export function ImageUploader({
   value,
   onChange,
   placeholder = "请上传图片",
-  maxSizeMB = 5
+  maxSizeMB = 5,
+  previewFromServer
 }: ImageUploaderProps) {
   const { message } = App.useApp();
   const [uploading, setUploading] = useState(false);
@@ -54,11 +57,11 @@ export function ImageUploader({
     const file = options.file as File;
     try {
       setUploading(true);
-      const objectKey = await mediaApi.uploadImage(file);
+      const result = await mediaApi.uploadImage(file);
       const dataUrl = await fileToDataUrl(file);
       setPreviewDataUrl(dataUrl);
-      onChange?.(objectKey);
-      options.onSuccess?.({ url: dataUrl, id: objectKey });
+      onChange?.(result.id);
+      options.onSuccess?.({ url: dataUrl, id: result.id });
       message.success("图片上传成功");
     } catch (error) {
       const err = error as Error;
@@ -71,6 +74,7 @@ export function ImageUploader({
 
   const displaySrc =
     previewDataUrl ??
+    previewFromServer ??
     (value && (value.startsWith("http") || value.startsWith("data:")) ? value : undefined);
 
   return (

@@ -141,18 +141,37 @@ func (b *Bootstrap) ossConnPool() error {
 			return fmt.Errorf("创建存储桶失败: %w", err)
 		}
 	}
-	// 根据 TLS 推导 scheme，构建前端可用的公开访问基址
-	scheme := "http"
-	if useSSL {
-		scheme = "https"
+	// 直链基址：优先 public_url（解决 endpoint 为 Docker 内部主机名时浏览器无法访问）
+	publicURL := strings.TrimSpace(b.cfg.Oss.PublicURL)
+	publicURL = strings.TrimSuffix(publicURL, "/")
+	if publicURL == "" {
+		scheme := "http"
+		if useSSL {
+			scheme = "https"
+		}
+		publicURL = fmt.Sprintf("%s://%s", scheme, endpoint)
+	}
+	if b.cfg.Oss.EnablePublicRead {
+		if err := applyOssPublicReadPolicy(ctx, minioClient, b.cfg.Oss.Bucket); err != nil {
+			return fmt.Errorf("设置 OSS 桶公开读策略失败（直链需匿名 GetObject，或关闭 oss.enable_public_read 改用签名 URL）: %w", err)
+		}
 	}
 	b.ossClient = oss.MinioClient{
 		Endpoint:  endpoint,
-		PublicURL: fmt.Sprintf("%s://%s", scheme, endpoint),
+		PublicURL: publicURL,
 		Bucket:    b.cfg.Oss.Bucket,
 		Client:    minioClient,
 	}
 	return nil
+}
+
+// applyOssPublicReadPolicy 为 Bucket 设置匿名 s3:GetObject，使上传接口返回的 HTTP 直链可在浏览器访问（本地 MinIO 常用）。
+func applyOssPublicReadPolicy(ctx context.Context, client *minio.Client, bucket string) error {
+	policy := fmt.Sprintf(
+		`{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetObject"],"Resource":["arn:aws:s3:::%s/*"]}]}`,
+		bucket,
+	)
+	return client.SetBucketPolicy(ctx, bucket, policy)
 }
 
 // 后续可增加 redis、jwt、Ping 等检查。

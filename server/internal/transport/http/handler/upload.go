@@ -3,17 +3,22 @@ package handler
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"vehivle/internal/domain/model"
 	"vehivle/internal/infrastructure/oss"
 	"vehivle/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
+	"gorm.io/gorm"
 )
 
 const maxImageUploadSize int64 = 10 << 20 // 10MB
+
+const mediaAssetTypeImage = "image"
 
 // allowedImageTypes MIME 白名单，防止上传非图片文件
 var allowedImageTypes = map[string]bool{
@@ -23,17 +28,18 @@ var allowedImageTypes = map[string]bool{
 	"image/webp": true,
 }
 
-// Upload 图片上传处理器
+// Upload 图片上传处理器：写入 OSS 后落库 media_assets，返回媒体 id 与可访问 URL。
 type Upload struct {
 	OSS oss.MinioClient
+	DB  *gorm.DB
 }
 
 // NewUpload 创建图片上传处理器
-func NewUpload(ossClient oss.MinioClient) *Upload {
-	return &Upload{OSS: ossClient}
+func NewUpload(ossClient oss.MinioClient, db *gorm.DB) *Upload {
+	return &Upload{OSS: ossClient, DB: db}
 }
 
-// UploadImages 处理单张图片上传，校验类型与大小后存入 OSS，返回公开访问 URL 与对象键。
+// UploadImages 处理单张图片上传，校验类型与大小后存入 OSS，并写入 media_assets。
 func (u *Upload) UploadImages(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
@@ -58,13 +64,13 @@ func (u *Upload) UploadImages(c *gin.Context) {
 	if ext == "" {
 		ext = ".jpg"
 	}
-	objectName := fmt.Sprintf("images/%s/%s%s",
+	storageKey := fmt.Sprintf("images/%s/%s%s",
 		time.Now().Format("20060102"),
 		uuid.New().String(),
 		ext,
 	)
 
-	_, err = u.OSS.Client.PutObject(c.Request.Context(), u.OSS.Bucket, objectName, file, header.Size, minio.PutObjectOptions{
+	_, err = u.OSS.Client.PutObject(c.Request.Context(), u.OSS.Bucket, storageKey, file, header.Size, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
@@ -72,8 +78,27 @@ func (u *Upload) UploadImages(c *gin.Context) {
 		return
 	}
 
+	mediaID := uuid.New().String()
+	row := &model.MediaAsset{
+		ID:         mediaID,
+		StorageKey: storageKey,
+		MimeType:   contentType,
+		FileSize:   header.Size,
+		AssetType:  mediaAssetTypeImage,
+	}
+	if err := u.DB.WithContext(c.Request.Context()).Create(row).Error; err != nil {
+		msg := "媒体元数据保存失败，请稍后重试"
+		if strings.Contains(err.Error(), "does not exist") {
+			msg = "数据库未创建 media_assets 表：在 server 目录执行 go run ./cmd/migrate -op up 后再试"
+		}
+		response.FailMedia(c, msg)
+		return
+	}
+
+	publicURL := u.OSS.ObjectPublicURL(storageKey)
 	response.Success(c, gin.H{
-		"url":        fmt.Sprintf("%s/%s/%s", u.OSS.PublicURL, u.OSS.Bucket, objectName),
-		"objectName": objectName,
+		"id":         row.ID,
+		"url":        publicURL,
+		"storageKey": storageKey,
 	})
 }

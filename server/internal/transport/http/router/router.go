@@ -45,8 +45,12 @@ func (r *Router) Register() error {
 		}
 		// 注册vehicles路由组
 		vehicles := admin.Group("/vehicles")
-		vehiclesHandler := handler.NewVehicles(r.db)
+		vehiclesHandler := handler.NewVehicles(r.db, r.oss)
 		{
+			vehicles.POST("/batch-status", vehiclesHandler.BatchStatus)
+			vehicles.POST("/:vehicle_id/publish", vehiclesHandler.Publish)
+			vehicles.POST("/:vehicle_id/unpublish", vehiclesHandler.Unpublish)
+			vehicles.POST("/:vehicle_id/duplicate", vehiclesHandler.Duplicate)
 			vehicles.GET("", vehiclesHandler.List)
 			vehicles.POST("", vehiclesHandler.Create)
 			vehicles.PUT("/:vehicle_id", vehiclesHandler.Update)
@@ -63,13 +67,13 @@ func (r *Router) Register() error {
 			categories.DELETE("/:category_id", categoriesHandler.Delete)
 		}
 		// OSS 上传（TODO: 上线前挂载认证中间件）
-		uploadHandler := handler.NewUpload(r.oss)
+		uploadHandler := handler.NewUpload(r.oss, r.db)
 		admin.POST("/upload/images", uploadHandler.UploadImages)
 	}
 	// 注册public路由
 	public := v1.Group("/public")
 	{
-		public.GET("/vehicles", handler.NewVehicles(r.db).List)
+		public.GET("/vehicles", handler.NewVehicles(r.db, r.oss).List)
 	}
 	// 通配：未注册路由返回统一 404
 	r.engine.NoRoute(r.noRouteHandler)
