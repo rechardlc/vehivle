@@ -5,22 +5,28 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
-	"os"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"vehivle/configs"
+	"vehivle/internal/infrastructure/oss"
 	"vehivle/internal/transport/http/router"
 	"vehivle/pkg/logger"
 
 	"gorm.io/gorm"
 	"vehivle/internal/infrastructure/postgres"
+
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // Bootstrap 是应用启动器，负责初始化应用依赖并启动 HTTP 服务。
 type Bootstrap struct {
-	cfg    *configs.Conf
-	logger logger.Logger
-	db     *gorm.DB
+	cfg       *configs.Conf
+	logger    logger.Logger
+	db        *gorm.DB
+	ossClient oss.MinioClient
 }
 
 // New 创建一个新的 Bootstrap 实例。
@@ -34,25 +40,20 @@ func New(cfg *configs.Conf) *Bootstrap {
 // Run 启动 HTTP 服务。
 func (b *Bootstrap) Run() (*gin.Engine, error) {
 	b.logger.Info(
-		// 使用 context.Background() 创建一个空的 context，用于记录日志。
 		context.Background(),
 		"bootstrap run",
-		slog.String("env", b.cfg.App.Env), // 记录环境变量。
-		slog.Int("port", b.cfg.App.Port),  // 记录端口号。
-		slog.String("config", fmt.Sprintf("conf.%s.yaml", b.cfg.App.Env)), // 记录配置文件路径。
+		slog.String("env", b.cfg.App.Env),
+		slog.Int("port", b.cfg.App.Port),
+		slog.String("config", fmt.Sprintf("conf.%s.yaml", b.cfg.App.Env)),
 	)
-	// 创建一个 Gin 引擎。
 	r := gin.New()
-	// 关闭尾斜杠自动重定向，避免 /path 被 301 到 /path/
-	// 前后端分离项目，因为前后端是两个项目，所以不需要尾斜杠自动重定向。
+	// 前后端分离项目无需尾斜杠自动重定向
 	r.RedirectTrailingSlash = false
-	// 使用 Gin 的 Logger 中间件，用于记录请求日志。
+	// 限制 multipart 表单内存占用（10MB）
+	r.MaxMultipartMemory = 10 << 20
 	r.Use(gin.Logger())
-	// 使用 Gin 的 Recovery 中间件，用于捕获 panic 并返回 500 错误。
 	r.Use(gin.Recovery())
-	// 使用 logger.RequestID() 中间件，用于生成请求 ID。
 	r.Use(logger.RequestID())
-	// 使用 logger.AccessLog(b.logger) 中间件，用于记录访问日志。
 	r.Use(logger.AccessLog(b.logger))
 	// 打开数据库连接
 	if err := b.pgsqlConnPool(); err != nil {
@@ -62,34 +63,96 @@ func (b *Bootstrap) Run() (*gin.Engine, error) {
 	if err := postgres.Ping(context.Background(), b.db, false); err != nil {
 		return nil, err
 	}
-	// 注册 API 路由（admin、public 分组）及健康检查。
+	// 对象存储：MinIO/S3 为强依赖，启动时必须连通并确保 Bucket 存在
+	if err := b.ossConnPool(); err != nil {
+		return nil, err
+	}
+	b.logger.Info(context.Background(), "OSS 连接成功", slog.String("bucket", b.cfg.Oss.Bucket))
+	// 注册 API 路由（admin、public 分组）及健康检查
 	if err := b.injectRouter(r); err != nil {
 		return nil, err
 	}
-	// 记录启动成功日志。
-	b.logger.Info(context.Background(), "bootstrap ready", slog.String("listen", ":"+strconv.Itoa(b.cfg.App.Port)))
-	// 返回 Gin 引擎。
+	b.logger.Info(context.Background(), "启动成功", slog.String("listen", ":"+strconv.Itoa(b.cfg.App.Port)))
 	return r, nil
 }
 
 func (b *Bootstrap) injectRouter(gin *gin.Engine) error {
-	if err := router.New(gin, b.logger, b.db).Register(); err != nil {
-		b.logger.Error(context.Background(), "failed to register router", slog.String("error", err.Error()))
-		os.Exit(1)
+	if err := router.New(gin, b.logger, b.db, b.ossClient).Register(); err != nil {
+		b.logger.Error(context.Background(), "注册路由失败", slog.String("error", err.Error()))
+		return fmt.Errorf("注册路由失败: %w", err)
 	}
 	return nil
 }
 
-// pgsql db 连接池
+// pgsqlConnPool 初始化 PostgreSQL 连接池
 func (b *Bootstrap) pgsqlConnPool() error {
-	// 打开数据库连接
 	db, err := postgres.Open(&b.cfg.Database, b.logger)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return fmt.Errorf("打开数据库失败: %w", err)
 	}
-	// 设置数据库连接池
 	b.db = db
 	return nil
 }
 
-// 后续增加DB、redis、oss、jwt、Ping等检查。
+// normalizeOssEndpoint 将配置中的 URL 转为 minio.New 所需的 host:port（无 scheme），并根据 http/https 推导 TLS。
+func normalizeOssEndpoint(raw string, cfgUseSSL bool) (endpoint string, useSSL bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", useSSL
+	}
+	lower := strings.ToLower(raw)
+	useSSL = cfgUseSSL
+	switch {
+	case strings.HasPrefix(lower, "https://"):
+		useSSL = true
+		raw = raw[8:]
+	case strings.HasPrefix(lower, "http://"):
+		useSSL = false
+		raw = raw[7:]
+	}
+	if i := strings.Index(raw, "/"); i >= 0 {
+		raw = raw[:i]
+	}
+	return strings.TrimSpace(raw), useSSL
+}
+
+// ossConnPool 初始化 MinIO 客户端并确保 Bucket 存在。
+func (b *Bootstrap) ossConnPool() error {
+	ctx := context.Background()
+	endpoint, useSSL := normalizeOssEndpoint(b.cfg.Oss.Endpoint, b.cfg.Oss.UseSSL)
+	if endpoint == "" {
+		return fmt.Errorf("OSS 连接地址为空")
+	}
+	minioClient, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(b.cfg.Oss.AccessKey, b.cfg.Oss.SecretKey, ""),
+		Region: b.cfg.Oss.Region,
+		Secure: useSSL,
+	})
+	if err != nil {
+		return fmt.Errorf("创建 OSS 客户端失败: %w", err)
+	}
+	exists, err := minioClient.BucketExists(ctx, b.cfg.Oss.Bucket)
+	if err != nil {
+		return fmt.Errorf("判断存储桶是否存在失败: %w", err)
+	}
+	if !exists {
+		err = minioClient.MakeBucket(ctx, b.cfg.Oss.Bucket, minio.MakeBucketOptions{Region: b.cfg.Oss.Region})
+		if err != nil {
+			return fmt.Errorf("创建存储桶失败: %w", err)
+		}
+	}
+	// 根据 TLS 推导 scheme，构建前端可用的公开访问基址
+	scheme := "http"
+	if useSSL {
+		scheme = "https"
+	}
+	b.ossClient = oss.MinioClient{
+		Endpoint:  endpoint,
+		PublicURL: fmt.Sprintf("%s://%s", scheme, endpoint),
+		Bucket:    b.cfg.Oss.Bucket,
+		Client:    minioClient,
+	}
+	return nil
+}
+
+// 后续可增加 redis、jwt、Ping 等检查。

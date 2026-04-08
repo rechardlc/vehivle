@@ -54,6 +54,8 @@ type OssConfig struct {
 	SecretKey  string `mapstructure:"secret_key"`
 	Bucket     string `mapstructure:"bucket"`
 	Region     string `mapstructure:"region"`
+	Endpoint   string `mapstructure:"endpoint"`
+	UseSSL     bool   `mapstructure:"use_ssl"`
 	SignExpire int    `mapstructure:"sign_expire"` // 签名 URL 有效期（秒）
 }
 
@@ -150,8 +152,10 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("oss.access_key", "")
 	v.SetDefault("oss.secret_key", "")
-	v.SetDefault("oss.bucket", "")
-	v.SetDefault("oss.region", "")
+	v.SetDefault("oss.endpoint", "")
+	v.SetDefault("oss.use_ssl", false)
+	v.SetDefault("oss.bucket", DefaultOSSBucket) // 媒体Bucket： Bucket是存储空间的名称。
+	v.SetDefault("oss.region", DefaultOSSRegion) // 媒体Region： region是存储空间的区域。
 	v.SetDefault("oss.sign_expire", DefaultOSSSignExpire)
 
 	v.SetDefault("jwt.secret", "")
@@ -182,6 +186,30 @@ func getEnvValue(keys ...string) string {
 func (c *Conf) Validate() error {
 	if c.App.Port <= 0 || c.App.Port > 65535 {
 		return fmt.Errorf("app.port must be between 1 and 65535, got %d", c.App.Port)
+	}
+	if err := c.validateOssRequired(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateOssRequired 校验对象存储为强依赖：启动前必须配置 endpoint、凭证与 bucket（MinIO/S3）。
+func (c *Conf) validateOssRequired() error {
+	o := c.Oss
+	if strings.TrimSpace(o.Endpoint) == "" {
+		return fmt.Errorf("oss.endpoint is required (set VEHIVLE_OSS_ENDPOINT for MinIO/S3)")
+	}
+	if strings.TrimSpace(o.AccessKey) == "" {
+		return fmt.Errorf("oss.access_key is required")
+	}
+	if strings.TrimSpace(o.SecretKey) == "" {
+		return fmt.Errorf("oss.secret_key is required")
+	}
+	if strings.TrimSpace(o.Bucket) == "" {
+		return fmt.Errorf("oss.bucket is required")
+	}
+	if strings.TrimSpace(o.Region) == "" {
+		return fmt.Errorf("oss.region is required")
 	}
 	return nil
 }

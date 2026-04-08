@@ -1,30 +1,13 @@
 import { http, requestData } from "./client";
 
-export interface UploadPolicyPayload {
-  filename: string;
-  mimeType: string;
-  size: number;
-}
-
-export interface UploadPolicyResult {
-  uploadUrl: string;
-  objectKey: string;
-  expiresIn: number;
-}
-
-export interface UploadCompletePayload {
-  objectKey: string;
-  mimeType: string;
-  size: number;
-}
-
 export const mediaApi = {
-  uploadPolicy(payload: UploadPolicyPayload) {
-    return requestData<UploadPolicyResult>(http.post("/admin/media/upload-policy", payload));
-  },
-  complete(payload: UploadCompletePayload) {
-    return requestData<{ id: string; storageKey: string; mimeType: string; fileSize: number }>(
-      http.post("/admin/media/complete", payload)
-    );
+  /**
+   * 直传 MinIO：multipart 字段名为 `file`，与后端 `FormFile("file")` 一致。
+   * 成功响应 `data` 为对象键字符串，可作为 `coverMediaId`、`defaultShareImage` 等字段存储。
+   */
+  uploadImage(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return requestData<string>(http.post("/admin/upload/images", formData));
   }
 };

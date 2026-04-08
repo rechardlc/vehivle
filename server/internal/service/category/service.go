@@ -8,16 +8,28 @@ import (
 	"vehivle/pkg/response"
 )
 
+// CategoryRepo 是分类仓库接口
 type CategoryRepo interface {
+	// GetById 按主键查询单条分类（管理端编辑/更新前拉取当前数据）。
 	GetById(ctx context.Context, id string) (*model.Category, error)
+	// GetChildListByID 获取分类的子分类列表
 	GetChildListByID(ctx context.Context, id string) ([]*model.Category, error)
+	// List 返回分类列表
 	List(ctx context.Context, q model.CategoryListQuery) ([]*model.Category, error)
+	// Create 创建分类
 	Create(ctx context.Context, category *model.Category) (*model.Category, error)
+	// Update 更新分类
 	Update(ctx context.Context, category *model.Category) error
+	// Delete 删除分类
 	Delete(ctx context.Context, id string) error
+	// Count 获取分类数量
 	Count(ctx context.Context, q model.CategoryListQuery) (int64, error)
 }
+
+// CategoryService 是分类服务
 type CategoryService struct {
+	// categoryRepo 是分类仓库
+	// 这个是依赖接口注入，而不是依赖具体实现
 	categoryRepo CategoryRepo
 }
 

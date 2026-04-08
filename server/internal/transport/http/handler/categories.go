@@ -15,8 +15,11 @@ import (
 )
 
 const (
+	// 默认分页页码
 	DEFAULT_CATEGORY_LIST_PAGE = 1
+	// 默认分页大小
 	DEFAULT_CATEGORY_LIST_PAGE_SIZE = 10
+	// 最大分页大小
 	MAX_CATEGORY_LIST_PAGE_SIZE = 100
 )
 

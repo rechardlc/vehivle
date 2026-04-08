@@ -14,7 +14,7 @@ func main() {
 	// 加载配置。
 	cfg, err := configs.Load()
 	if err != nil {
-		slog.Error("failed to load config", "error", err)
+		slog.Error("加载配置失败", "error", err)
 		os.Exit(1)
 	}
 	// 创建 Bootstrap 实例。
@@ -23,7 +23,7 @@ func main() {
 	r, err := b.Run()
 	// 如果启动失败，记录错误并退出。
 	if err != nil {
-		slog.Error("failed to run", "error", err)
+		slog.Error("启动服务失败", "error", err)
 		os.Exit(1)
 	}
 	// 启动 HTTP 服务，监听指定端口。

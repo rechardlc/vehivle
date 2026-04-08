@@ -2,10 +2,11 @@ package router
 
 import (
 	"log/slog"
+	"vehivle/internal/infrastructure/oss"
 	"vehivle/internal/transport/http/handler"
+	"vehivle/internal/transport/http/middleware"
 	"vehivle/pkg/logger"
 	"vehivle/pkg/response"
-	"vehivle/internal/transport/http/middleware"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -16,11 +17,12 @@ type Router struct {
 	engine *gin.Engine
 	logger logger.Logger
 	db     *gorm.DB
+	oss    oss.MinioClient
 }
 
-// New 创建 Router 实例，engine 为已完成中间件配置的 Gin 引擎，logger 用于请求日志。
-func New(engine *gin.Engine, logger logger.Logger, db *gorm.DB) *Router {
-	return &Router{engine: engine, logger: logger, db: db}
+// New 创建 Router 实例。
+func New(engine *gin.Engine, logger logger.Logger, db *gorm.DB, ossClient oss.MinioClient) *Router {
+	return &Router{engine: engine, logger: logger, db: db, oss: ossClient}
 }
 
 // Register 注册 API 路由分组（admin、public）、健康检查等路由。
@@ -34,7 +36,6 @@ func (r *Router) Register() error {
 	{
 		// 注册user路由组
 		user := admin.Group("/user")
-		// 创建userHandler实例
 		userHandler := handler.NewUser(r.db)
 		{
 			user.GET("/:user_id", userHandler.Get)
@@ -44,10 +45,8 @@ func (r *Router) Register() error {
 		}
 		// 注册vehicles路由组
 		vehicles := admin.Group("/vehicles")
-		// 创建vehiclesHandler实例
 		vehiclesHandler := handler.NewVehicles(r.db)
 		{
-			// "" 表示挂在 /vehicles 本身（无尾斜杠）；勿写成 " "（空格）或 "/"（会触发 301）
 			vehicles.GET("", vehiclesHandler.List)
 			vehicles.POST("", vehiclesHandler.Create)
 			vehicles.PUT("/:vehicle_id", vehiclesHandler.Update)
@@ -55,7 +54,6 @@ func (r *Router) Register() error {
 		}
 		// 注册categories路由组
 		categories := admin.Group("/categories")
-		// 创建categoriesHandler实例
 		categoriesHandler := handler.NewCategories(r.db)
 		{
 			categoryList := []string{"keyword", "level", "status", "page", "pageSize", "sortField", "sortOrder"}
@@ -64,15 +62,16 @@ func (r *Router) Register() error {
 			categories.PUT("/:category_id", categoriesHandler.Update)
 			categories.DELETE("/:category_id", categoriesHandler.Delete)
 		}
+		// OSS 上传（TODO: 上线前挂载认证中间件）
+		uploadHandler := handler.NewUpload(r.oss)
+		admin.POST("/upload/images", uploadHandler.UploadImages)
 	}
 	// 注册public路由
 	public := v1.Group("/public")
 	{
-		// 注册vehicles路由
 		public.GET("/vehicles", handler.NewVehicles(r.db).List)
 	}
-
-	// 通配：未注册路由返回统一 404（类似前端 catch-all）
+	// 通配：未注册路由返回统一 404
 	r.engine.NoRoute(r.noRouteHandler)
 	// 通配：路由存在但方法不匹配返回 405
 	r.engine.NoMethod(r.noMethodHandler)
@@ -99,8 +98,8 @@ func (r *Router) healthHandler(c *gin.Context) {
 	}
 	r.logger.Info(c.Request.Context(), "health check", slog.String("request_id", rid))
 	response.Success(c, gin.H{
-		"status":     "ok",
-		"message":    "API is running",
-		"requestId": rid,
+		"status":   "ok",
+		"message":  "API is running",
+		"ossReady": r.oss.Bucket != "",
 	})
 }

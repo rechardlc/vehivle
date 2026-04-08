@@ -28,6 +28,8 @@ const (
 // OSS 默认值
 const (
 	DefaultOSSSignExpire = 3600
+	DefaultOSSRegion     = "us-east-1"
+	DefaultOSSBucket     = "vehivle-media"
 )
 
 // JWT 默认值

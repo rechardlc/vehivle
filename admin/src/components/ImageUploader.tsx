@@ -28,7 +28,7 @@ export function ImageUploader({
 }: ImageUploaderProps) {
   const { message } = App.useApp();
   const [uploading, setUploading] = useState(false);
-  /** 本地上传后的预览（表单值为 media id，与可展示的 URL 分离） */
+  /** 本地上传后的预览（表单值为 OSS 对象键，与可展示的 data URL 分离） */
   const [previewDataUrl, setPreviewDataUrl] = useState<string | undefined>();
 
   useEffect(() => {
@@ -54,20 +54,11 @@ export function ImageUploader({
     const file = options.file as File;
     try {
       setUploading(true);
-      const policy = await mediaApi.uploadPolicy({
-        filename: file.name,
-        mimeType: file.type || "image/png",
-        size: file.size
-      });
-      const completed = await mediaApi.complete({
-        objectKey: policy.objectKey,
-        mimeType: file.type || "image/png",
-        size: file.size
-      });
+      const objectKey = await mediaApi.uploadImage(file);
       const dataUrl = await fileToDataUrl(file);
       setPreviewDataUrl(dataUrl);
-      onChange?.(completed.id);
-      options.onSuccess?.({ url: dataUrl, id: completed.id });
+      onChange?.(objectKey);
+      options.onSuccess?.({ url: dataUrl, id: objectKey });
       message.success("图片上传成功");
     } catch (error) {
       const err = error as Error;
@@ -99,7 +90,7 @@ export function ImageUploader({
           fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120'%3E%3Crect fill='%23f0f0f0' width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='12'%3E加载失败%3C/text%3E%3C/svg%3E"
         />
       ) : value ? (
-        <Typography.Text type="secondary">已绑定封面资源 ID</Typography.Text>
+        <Typography.Text type="secondary">已绑定图片（对象键：{value}）</Typography.Text>
       ) : (
         <Typography.Text type="secondary">{placeholder}</Typography.Text>
       )}

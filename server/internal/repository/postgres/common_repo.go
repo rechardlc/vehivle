@@ -9,7 +9,8 @@ type PageResult struct {
 	Total int `json:"total"`
 	TotalPage int `json:"totalPage"`
 }
-
+// 在go由于没有new关键字，所以需要自己实现一个函数来创建一个PageResult对象
+// 默认使用New*函数来创建对象来模拟new关键字
 func NewPage(page int, pageSize int, total int) *PageResult {
 	return &PageResult{
 		Page: page,

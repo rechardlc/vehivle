@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)（最新：struct tag 与绑定、Gin 中间件与 `ValidateParams`）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)（最新：MinIO 对象存储集成、图片上传全链路、Bootstrap 生命周期扩展）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -12,6 +12,7 @@
 | 2 | 第 2 步：HTTP 基座（路由分组、router、handler、NoRoute/NoMethod 通配、完整中间件链） | ✅ 已完成 |
 | 3 | 第 3 步：业务语义（domain/model、enum、rule） | ✅ 已完成 |
 | 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移、`000001`/`000002`；✅ `VehicleRepo`：`GetById`/`Update`/`List`/`Create`；✅ `CategoryRepo`：CRUD 全链路；⏳ 车型 `Update`/`Delete`、分页与参数校验） |
+| 4.5 | 第 4.5 步：对象存储（媒体上传） | ✅ 已完成（MinIO 客户端封装、Bootstrap 连接池、Bucket 自动创建、图片上传 Handler、前端直传适配） |
 | 5 | 第 5 步：认证闭环 | 待开始 |
 | 6 | 第 6～12 步 | 待开始 |
 
@@ -27,8 +28,9 @@
 | 3 | bootstrap 抽取、路由分组（admin/public）、完整中间件链 | ✅ 已完成 |
 | 4 | domain 建模（enum、model、rule） | ✅ 已完成 |
 | 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移、车型/分类 List 读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD 全链路；⏳ 车型 Update/Delete、分页、事务） |
+| 5.5 | 对象存储（MinIO/S3） | ✅ 已完成（客户端封装、连接池、Bucket 管理、图片上传 Handler、Docker MinIO 服务） |
 | 6 | 认证与权限（JWT、RBAC） | 待开始 |
-| 7 | 核心业务域（分类、车型、媒体等） | 进行中（✅ 分类 CRUD + 状态枚举 + parentName；⏳ 车型完整 CRUD、媒体） |
+| 7 | 核心业务域（分类、车型、媒体等） | 进行中（✅ 分类 CRUD + 状态枚举 + parentName；✅ 图片上传（MinIO 直传）；⏳ 车型完整 CRUD） |
 | 8 | 缓存、性能、异常兜底 | 待开始 |
 | 9 | 测试与质量门禁 | 待开始 |
 | 10 | 部署与上线 | 待开始 |
@@ -39,16 +41,18 @@
 
 ```
 main ✅
-  └─ Bootstrap ✅ (cfg → logger → DB → middleware → router)
+  └─ Bootstrap ✅ (cfg → logger → DB → Ping → OSS → router)
        └─ Router ✅ (admin/public 分组, health, 404/405)
             ├─ Handler（车型）✅ List/Create 已接通；⏳ Update/Delete 仍为占位
             │    └─ Service ✅ (VehicleRepo 接口 + Publish + List + Create)
             │         └─ Repository ✅ GetById / Update / List / Create（⏳ Delete 待补）
             │              └─ *gorm.DB ✅
-            └─ Handler（分类）✅ List/Create 已接通
-                 └─ Service ✅ (CategoryRepo 接口 + List/Create/Update/Delete)
-                      └─ Repository ✅ CRUD 全链路
-                           └─ *gorm.DB ✅
+            ├─ Handler（分类）✅ List/Create 已接通
+            │    └─ Service ✅ (CategoryRepo 接口 + List/Create/Update/Delete)
+            │         └─ Repository ✅ CRUD 全链路
+            │              └─ *gorm.DB ✅
+            └─ Handler（上传）✅ POST /admin/upload/images
+                 └─ oss.MinioClient ✅ (PutObject → MinIO/S3)
 ```
 
 ### 待办 / 断裂点
@@ -59,6 +63,7 @@ main ✅
 | 2 | `VehicleRepo` 尚无 `Delete`（及分页） | `repository/postgres/vehicle_repo.go` |
 | 3 | 分类 `Update`/`Delete` | ✅ 已接通（PATCH 体为指针字段，见 [lesson-20260325](./lesson-20260325.md)） |
 | 4 | User 模块无 Service / Repository 层 | `handler/user.go` |
+| 5 | 上传接口未挂载认证中间件 | `router/router.go`（TODO 标注） |
 
 ---
 
@@ -73,16 +78,18 @@ server/
 ├── cmd/api/main.go     # API 入口 ✅
 ├── cmd/migrate/        # 数据库迁移 CLI ✅（iofs）
 ├── configs/            # 配置 ✅
-├── deploy/docker/      # 本地 PG/Redis Compose ✅
+├── deploy/docker/      # 本地 PG/Redis/MinIO Compose ✅
 ├── migrations/         # SQL 迁移 ✅（000001 主表、000002 categories 等）
 ├── internal/bootstrap/ # 依赖装配 ✅
 ├── internal/infrastructure/postgres/ # Postgres 连接 ✅
+├── internal/infrastructure/oss/     # MinIO/S3 客户端 ✅
 ├── internal/domain/    # 领域语义 ✅（enum / model / rule）
 ├── internal/service/vehicle/ # 业务服务 ✅（接口 + Publish 逻辑）
 ├── internal/repository/postgres/ # 数据仓储 ✅（车型：GetById、Update、List）
 ├── internal/transport/http/
 │   ├── router/         # 路由 ✅
-│   └── handler/        # 处理器 ⏳（车型 List ✅；其余方法占位）
+│   ├── handler/        # 处理器 ⏳（车型 List ✅；上传 ✅；其余方法占位）
+│   └── middleware/     # 中间件 ✅（ValidateParams 参数白名单）
 ├── pkg/
 │   ├── logger/         # 日志 ✅
 │   └── response/       # 统一响应 ✅
@@ -93,18 +100,38 @@ server/
 
 ## 五、下一步建议（对齐 [循序渐进总说明](../循序渐进总说明.md) 第 4～5 步）
 
-1. **车型写操作**：为 `VehicleRepo` 增加 `Create`/`Delete`（及需要的 DTO），Handler 中 `Create`/`Update`/`Delete` 调用 Service。
-2. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
-3. **domain / rule**：扩展下架、删除规则，与 `vehicles.status` CHECK 一致。
-4. **第 5 步认证**：登录、JWT、RBAC（见 [learning-path 阶段 4](../learning-path/go-backend-learning-roadmap.md)）。
-5. **（可选）** 新迁移 `000002_...`（如 `categories`），勿改已执行的 `000001`。
+1. **上传认证**：`POST /admin/upload/images` 当前无鉴权中间件（已标 TODO），上线前必须挂载 JWT 认证。
+2. **车型写操作**：为 `VehicleRepo` 增加 `Delete`（及需要的 DTO），Handler 中 `Update`/`Delete` 调用 Service。
+3. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
+4. **domain / rule**：扩展下架、删除规则，与 `vehicles.status` CHECK 一致。
+5. **第 5 步认证**：登录、JWT、RBAC（见 [learning-path 阶段 4](../learning-path/go-backend-learning-roadmap.md)）。
 6. **（可选）** 优雅关闭时 `postgres.Close`；GORM SQL 日志接入统一 logger。
+7. **（可选）** 图片上传扩展：多图上传、图片压缩/缩略图、签名 URL（`SignExpire` 已预留）。
 
 ---
 
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-04-08
+
+- **完成**：**MinIO/S3 对象存储集成** —— `infrastructure/oss/client.go`（`MinioClient` 结构体，聚合 endpoint、bucket、`*minio.Client`）
+- **完成**：**Bootstrap 生命周期扩展** —— 新增 `ossConnPool()`（MinIO 连接初始化 + Bucket 存在性检查 + 自动创建）；启动顺序：cfg → logger → DB → Ping → **OSS** → Router
+- **完成**：**`normalizeOssEndpoint`** —— 将用户配置的 URL（`http://...` / `https://...` / 裸 `host:port`）统一归一化为 MinIO SDK 所需的 `host:port` + TLS 标志
+- **完成**：**图片上传 Handler** —— `handler/upload.go`（MIME 白名单、10MB 大小限制、`images/<date>/<uuid>` 唯一对象键、`PutObject` 写入 MinIO、返回公开 URL）
+- **完成**：**Router 扩展** —— `Router` 结构体新增 `oss` 字段，注册 `POST /admin/upload/images`；健康检查返回 `ossReady`
+- **完成**：**配置层增强** —— `OssConfig` 新增 `Endpoint`/`UseSSL`；`validateOssRequired()` 启动前校验五项必填；`default.go` 新增 `DefaultOSSRegion`/`DefaultOSSBucket`
+- **完成**：**Docker Compose 扩展 MinIO** —— 新增 `minio` 服务（S3 API:9000 + Console:9001）、`vehivle_minio_data` 持久卷、healthcheck
+- **完成**：**统一响应 `RequestID` 补全** —— `Success`/`Fail`/`FailNotFound`/`FailMethodNotAllowed` 均填入 `getRequestID(c)`
+- **完成**：**`injectRouter` 错误处理改进** —— 返回 `error` 替代 `os.Exit(1)`，遵循 Go 错误处理惯例
+- **完成**：**前端适配** —— `mediaApi` 从两步上传（policy+complete）简化为单步直传 `uploadImage(file)`；`ImageUploader` 组件同步更新；`coverMediaId` 语义改为 OSS 对象键
+- **完成**：**代码规范** —— 清理冗余注释；错误信息中文化；`CategoryRepo` 接口方法添加文档注释
+- **学习**：`defer` 关键字（Go 的 `try...finally`）、`10 << 20` 位运算表达 10MB、`%w` 错误包装、`map[string]bool` 做白名单 O(1) 查找
+- **学习**：MinIO SDK `minio.New` 的 endpoint 要求（host:port 无 scheme）；`BucketExists`/`MakeBucket` 幂等模式；`PutObject` 参数（`io.Reader`）
+- **学习**：Go struct 零值陷阱——`string` 零值 `""` 不报错但可能静默出错（如 `RequestID` 漏赋值）
+- **文档**：新增 [lesson-20260408.md](./lesson-20260408.md)，更新 [learn/README.md](./README.md) 索引；[progress.md](./progress.md) 全链路、目录结构同步
+- **明日第一件事**：上传接口挂载认证中间件，或车型 `Update`/`Delete` 接 Service + Repo
 
 ### 2026-03-29
 
@@ -209,4 +236,4 @@ server/
 
 ---
 
-*最后更新：2026-03-29（struct tag、Gin 绑定与中间件、`ValidateParams`；lesson-20260329 / README / progress 同步）*
+*最后更新：2026-04-08（MinIO 对象存储集成、图片上传全链路、Bootstrap 生命周期扩展、统一响应 RequestID 补全；lesson-20260408 / README / progress 同步）*

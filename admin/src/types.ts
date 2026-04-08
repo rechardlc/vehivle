@@ -73,7 +73,7 @@ export interface Vehicle {
   id: string;
   categoryId: string;
   name: string;
-  /** 后端封面媒体资源 ID（关联 media_assets） */
+  /** 封面图：当前为 OSS 对象键（与上传接口返回的 data 一致） */
   coverMediaId: string;
   priceMode: PriceMode;
   msrpPrice: number;
