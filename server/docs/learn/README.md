@@ -28,5 +28,6 @@
 | [lesson-20260329.md](./lesson-20260329.md) | struct tag（`json`/`form`/`gorm`）、`ShouldBindQuery`/`ShouldBindJSON`、GET query 与 FormData；Gin 中间件（`HandlerFunc`、`Use`、单路由、`Next`/`Abort`、`ValidateParams`） |
 | [lesson-20260408.md](./lesson-20260408.md) | MinIO/S3 对象存储集成（客户端封装、Bootstrap 连接池、Bucket 自动创建）；图片上传 Handler（MIME 白名单、`PutObject`、`defer`）；`injectRouter` 错误处理改进；统一响应 `RequestID` 补全；Docker Compose 扩展 MinIO；前端直传适配 |
 | [lesson-20260409.md](./lesson-20260409.md) | **`media_assets` 迁移与语义**；上传后写库、返回 `id`/`url`/`storageKey`；`coverImageUrl` 拼接；`VehicleService` 写接口与批量/发布/下架/复制；路由补全；前端 `coverMediaId` = 媒体 UUID |
+| [lesson-20260410.md](./lesson-20260410.md) | **JWT 认证闭环**——双 Token + httpOnly Cookie + 角色鉴权；链路审计 8 项偏离修复（`json:"-"`、统一错误、`SameSite=Lax`、Refresh 实现、RT MaxAge 独立、Validate 密钥校验、RequireRole、CookieSecure） |
 
 建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`。

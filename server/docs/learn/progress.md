@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)、[lesson-20260409.md](./lesson-20260409.md)（最新：**media_assets**、车型写接口与封面 URL）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)、[lesson-20260409.md](./lesson-20260409.md)、[lesson-20260410.md](./lesson-20260410.md)（最新：**JWT 认证闭环**——双 Token + httpOnly Cookie + 角色鉴权 + 安全加固）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -13,7 +13,7 @@
 | 3 | 第 3 步：业务语义（domain/model、enum、rule） | ✅ 已完成 |
 | 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移 **`000001`/`000002`/`000003`**（含 **media_assets**）；✅ `VehicleRepo`：`GetById`/`Update`/`List`/`Create`；✅ `CategoryRepo`：CRUD 全链路；✅ 车型 **Update/Delete**（逻辑删除）已接 Service；⏳ 分页与参数校验） |
 | 4.5 | 第 4.5 步：对象存储（媒体上传） | ✅ 已完成（MinIO 客户端封装、Bootstrap 连接池、Bucket 自动创建、图片上传 Handler、前端直传适配） |
-| 5 | 第 5 步：认证闭环 | 待开始 |
+| 5 | 第 5 步：认证闭环 | ✅ 已完成（JWT 双 Token + httpOnly Cookie + JWTAuth 中间件 + RequireRole 角色鉴权 + Refresh 续签 + Logout 清除 + 安全加固） |
 | 6 | 第 6～12 步 | 待开始 |
 
 ---
@@ -29,7 +29,7 @@
 | 4 | domain 建模（enum、model、rule） | ✅ 已完成 |
 | 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移至 **`000003`**、车型/分类读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD；✅ 车型 Update/逻辑 Delete；✅ **MediaAssetRepo**；⏳ 分页、事务） |
 | 5.5 | 对象存储（MinIO/S3） | ✅ 已完成（客户端封装、连接池、Bucket 管理、图片上传 Handler、Docker MinIO 服务） |
-| 6 | 认证与权限（JWT、RBAC） | 待开始 |
+| 6 | 认证与权限（JWT、RBAC） | ✅ 已完成（双 Token + httpOnly Cookie + JWTAuth + RequireRole + Refresh + Logout + Validate 加固） |
 | 7 | 核心业务域（分类、车型、媒体等） | 进行中（✅ 分类 CRUD + 状态枚举 + parentName；✅ 上传 **MinIO + media_assets 落库**；✅ 车型 **List/Create/Update/Delete/Publish/Unpublish/Duplicate/Batch**；⏳ 认证后上传） |
 | 8 | 缓存、性能、异常兜底 | 待开始 |
 | 9 | 测试与质量门禁 | 待开始 |
@@ -41,32 +41,41 @@
 
 ```
 main ✅
-  └─ Bootstrap ✅ (cfg → logger → DB → Ping → OSS → router)
-       └─ Router ✅ (admin/public 分组, health, 404/405)
-            ├─ Handler（车型）✅ List/Create/Update/逻辑 Delete/Publish/Unpublish/Duplicate/Batch
-            │    └─ Service ✅ (GetById、UpdateVehicle、SoftDelete、Publish、Unpublish、Duplicate、BatchSetStatus、List、Create)
-            │         └─ Repository ✅ VehicleRepo：GetById / Update / List / Create
-            │              └─ *gorm.DB ✅
-            │    └─ MediaAssetRepo ✅ MapStorageKeysByIDs（列表拼 coverImageUrl）
-            ├─ Handler（分类）✅ List/Create/Update/Delete
-            │    └─ Service ✅ (CategoryRepo 接口 + CRUD)
-            │         └─ Repository ✅ CRUD 全链路
-            │              └─ *gorm.DB ✅
-            └─ Handler（上传）✅ POST /admin/upload/images
-                 ├─ oss.MinioClient ✅ PutObject
-                 └─ *gorm.DB ✅ INSERT media_assets（返回 id / url / storageKey）
+  └─ Bootstrap ✅ (cfg → Validate(JWT 密钥/长度/Secure) → logger → DB → Ping → OSS → router)
+       └─ Router ✅ (auth公开组 + admin受保护组 + public, health, 404/405)
+            ├─ Auth 路由组（公开）✅
+            │    ├─ POST /login   → Handler.Login → Service.Login(bcrypt) → 写双 Cookie
+            │    ├─ POST /refresh → Handler.Refresh → Service.RefreshToken → 写新 AT Cookie
+            │    ├─ POST /logout  → Handler.Logout → 清除双 Cookie
+            │    └─ GET  /me      → JWTAuth 中间件 → Handler.Me → repo.FindByID
+            ├─ Admin 路由组（JWTAuth 中间件保护）✅
+            │    ├─ Handler（车型）✅ List/Create/Update/逻辑 Delete/Publish/Unpublish/Duplicate/Batch
+            │    │    └─ Service ✅ (GetById、UpdateVehicle、SoftDelete、Publish、Unpublish、Duplicate、BatchSetStatus、List、Create)
+            │    │         └─ Repository ✅ VehicleRepo：GetById / Update / List / Create
+            │    │              └─ *gorm.DB ✅
+            │    │    └─ MediaAssetRepo ✅ MapStorageKeysByIDs（列表拼 coverImageUrl）
+            │    ├─ Handler（分类）✅ List/Create/Update/Delete
+            │    │    └─ Service ✅ (CategoryRepo 接口 + CRUD)
+            │    │         └─ Repository ✅ CRUD 全链路
+            │    │              └─ *gorm.DB ✅
+            │    └─ Handler（上传）✅ POST /admin/upload/images（已受 JWT 保护）
+            │         ├─ oss.MinioClient ✅ PutObject
+            │         └─ *gorm.DB ✅ INSERT media_assets（返回 id / url / storageKey）
+            └─ Public 路由组（无认证）✅ GET /vehicles
 ```
 
 ### 待办 / 断裂点
 
-| # | 问题 | 文件 |
-|---|------|------|
-| 1 | 车型列表/管理端 **分页** 仍由前端 slice（未走后端 page） | `handler/vehicles.go`、`admin` |
-| 2 | `VehicleRepo` 无独立 **物理 Delete**（当前为 **逻辑删除** `status=deleted`） | 按产品决定是否补硬删 |
-| 3 | 分类 `Update`/`Delete` | ✅ 已接通（见 [lesson-20260325](./lesson-20260325.md)） |
-| 4 | User 模块无 Service / Repository 层 | `handler/user.go` |
-| 5 | 上传接口未挂载认证中间件 | `router/router.go`（TODO 标注） |
-| 6 | **media / OSS GC**（无引用对象清理） | 未实现 |
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| 1 | 车型列表/管理端 **分页** 仍由前端 slice（未走后端 page） | `handler/vehicles.go`、`admin` | ⏳ |
+| 2 | `VehicleRepo` 无独立 **物理 Delete**（当前为 **逻辑删除** `status=deleted`） | 按产品决定是否补硬删 | ⏳ |
+| 3 | 分类 `Update`/`Delete` | ✅ 已接通（见 [lesson-20260325](./lesson-20260325.md)） | ✅ |
+| 4 | User 模块无 Service / Repository 层 | `handler/user.go`（仍为 stub） | ⏳ |
+| 5 | 上传接口未挂载认证中间件 | `router/router.go` | ✅ 已由 admin 组 JWTAuth 中间件覆盖 |
+| 6 | **media / OSS GC**（无引用对象清理） | 未实现 | ⏳ |
+| 7 | 种子数据——初始管理员账号 | `cmd/seed/main.go` 或迁移 `000004` | ⏳ |
+| 8 | `.env` 需补全 JWT 密钥 ≥ 32 字符 | `.env` / `.env.dev` | ⏳ |
 
 ---
 
@@ -89,11 +98,13 @@ server/
 ├── internal/domain/    # 领域语义 ✅（enum / model / rule）
 ├── internal/service/vehicle/ # 业务服务 ✅（GetById、写接口、Publish、Unpublish、Duplicate、Batch）
 ├── internal/repository/postgres/ # 数据仓储 ✅（VehicleRepo、MediaAssetRepo、CategoryRepo）
+├── internal/service/auth/    # 认证业务 ✅（Login、RefreshToken、GetCurrentUser）
 ├── internal/transport/http/
-│   ├── router/         # 路由 ✅
-│   ├── handler/        # 处理器 ✅（车型全量写读、上传写 media_assets）
-│   └── middleware/     # 中间件 ✅（ValidateParams 参数白名单）
+│   ├── router/         # 路由 ✅（auth 公开组 + admin JWTAuth 保护组 + public）
+│   ├── handler/        # 处理器 ✅（车型全量写读、上传写 media_assets、auth 四接口）
+│   └── middleware/     # 中间件 ✅（JWTAuth、RequireRole、ValidateParams）
 ├── pkg/
+│   ├── jwt/            # JWT 工具 ✅（Claims、GenerateToken、ParseToken）
 │   ├── logger/         # 日志 ✅
 │   └── response/       # 统一响应 ✅
 └── ...
@@ -101,21 +112,41 @@ server/
 
 ---
 
-## 五、下一步建议（对齐 [循序渐进总说明](../循序渐进总说明.md) 第 4～5 步）
+## 五、下一步建议（对齐 [循序渐进总说明](../循序渐进总说明.md) 第 6 步及后续）
 
-1. **上传认证**：`POST /admin/upload/images` 当前无鉴权中间件（已标 TODO），上线前必须挂载 JWT 认证。
-2. **后端分页**：管理端车型列表改为 SQL `LIMIT/OFFSET` 或游标，与 admin 筛选对齐。
-3. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
-4. **domain / rule**：按产品收紧 `Publish` 的详情图/参数校验（当前 MVP 可放宽）。
-5. **第 5 步认证**：登录、JWT、RBAC（见 [learning-path 阶段 4](../learning-path/go-backend-learning-roadmap.md)）。
+1. **种子数据**：创建初始管理员账号（`cmd/seed/main.go` 或迁移 `000004_seed_admin_user.up.sql`），需 bcrypt 哈希密码。
+2. **`.env` 补全 JWT 密钥**：`VEHIVLE_JWT_SECRET` 和 `VEHIVLE_JWT_REFRESH_SECRET` ≥ 32 字符，否则启动报错（Validate 已校验）。
+3. **后端分页**：管理端车型列表改为 SQL `LIMIT/OFFSET` 或游标，与 admin 筛选对齐。
+4. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
+5. **domain / rule**：按产品收紧 `Publish` 的详情图/参数校验（当前 MVP 可放宽）。
 6. **（可选）** 优雅关闭时 `postgres.Close`；GORM SQL 日志接入统一 logger。
 7. **（可选）** 媒体 GC：无引用 `media_assets` + 对应 OSS 对象清理任务。
+8. **（V1.5）** Redis Token 黑名单（登出/踢人即时生效）。
 
 ---
 
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-04-10
+
+- **完成**：**JWT 认证闭环落地**——对照 [jwt-implementation-guide.md](../jwt-implementation-guide.md) 全链路审计，发现并修复 **9 个偏离/断裂点**
+- **修复（安全）**：`AdminUser.PasswordHash` 的 `json:"passwordHash"` → `json:"-"`，阻止密码哈希序列化到响应
+- **修复（安全）**：Login 错误信息统一为 `ErrInvalidCredentials`（"用户名或密码错误"），不泄露具体原因
+- **修复（安全）**：Cookie `SameSite` 从 `NoneMode` 改为 `LaxMode`，防 CSRF
+- **修复（安全）**：`configs.validateJWTRequired()`——密钥必填、≥ 32 字符、生产强制 CookieSecure
+- **修复（功能）**：实现 **Refresh 端点**（`Service.RefreshToken` + `Handler.Refresh` + 路由注册），从 RT Cookie 读取并签发新 AT
+- **修复（功能）**：RT Cookie `MaxAge` 使用独立的 `RefreshExpiresIn`（之前误用 AT 有效期）
+- **修复（功能）**：Login 响应体返回 `{ expiresIn }` 供前端做续签倒计时
+- **修复（功能）**：Login 失败错误码从 `CodeBusinessError` 改为 `FailAuth`（`A00001`）
+- **修复（功能）**：`FailAuth` 从 HTTP 200 改为 **HTTP 401**、`FailAuthDenied` 改为 **HTTP 403**——**打通前端无感刷新链路**（Axios error 拦截器仅在非 2xx 时触发）
+- **新增**：`RequireRole` 角色鉴权中间件，`map[string]bool` O(1) 查找
+- **新增**：`JWTConfig` 扩展 `CookieDomain` + `CookieSecure` 字段
+- **清理**：删除 `bootstrap.jwtConnPool()`（冗余，已由 `Validate` 覆盖）
+- **学习**：`json:"-"` 序列化跳过、统一错误信息防信息泄露、`SameSite=Lax` 与 CSRF、RT Cookie Path 限制、Refresh Token 续签流程、`RequireRole` 中间件工厂函数闭包、HTTP 状态码与 Axios 拦截器的联动关系（200 不触发 error 回调）
+- **文档**：新增 [lesson-20260410.md](./lesson-20260410.md)；更新 [README.md](./README.md)、[progress.md](./progress.md) 全链路
+- **明日第一件事**：种子数据（初始管理员账号）+ `.env` 补全 JWT 密钥 ≥ 32 字符 → 自测四接口
 
 ### 2026-04-09
 
@@ -253,4 +284,4 @@ server/
 
 ---
 
-*最后更新：2026-04-09（media_assets、车型写接口与 coverImageUrl；lesson-20260409 / README / progress 同步）*
+*最后更新：2026-04-10（JWT 认证闭环——双 Token + httpOnly Cookie + 角色鉴权 + 安全加固；lesson-20260410 / README / progress 同步）*

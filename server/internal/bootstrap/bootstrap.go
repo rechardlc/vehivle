@@ -77,7 +77,7 @@ func (b *Bootstrap) Run() (*gin.Engine, error) {
 }
 
 func (b *Bootstrap) injectRouter(gin *gin.Engine) error {
-	if err := router.New(gin, b.logger, b.db, b.ossClient).Register(); err != nil {
+	if err := router.New(gin, b.logger, b.db, b.ossClient, b.cfg.JWT).Register(); err != nil {
 		b.logger.Error(context.Background(), "注册路由失败", slog.String("error", err.Error()))
 		return fmt.Errorf("注册路由失败: %w", err)
 	}
@@ -174,21 +174,3 @@ func applyOssPublicReadPolicy(ctx context.Context, client *minio.Client, bucket 
 	return client.SetBucketPolicy(ctx, bucket, policy)
 }
 
-/**
-JWT 初始化
-*/
-func (b *Bootstrap) jwtConnPool() error {
-	if b.cfg.JWT.Secret == "" {
-		return fmt.Errorf("JWT 密钥为空")
-	}
-	if b.cfg.JWT.RefreshSecret == "" {
-		return fmt.Errorf("JWT 刷新密钥为空")
-	}
-	if b.cfg.JWT.ExpireHours <= 0 {
-		return fmt.Errorf("JWT 过期时间为空")
-	}
-	if b.cfg.JWT.RefreshExpireHours <= 0 {
-		return fmt.Errorf("JWT 刷新过期时间为空")
-	}
-	return nil
-}

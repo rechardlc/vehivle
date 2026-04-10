@@ -105,14 +105,27 @@ func FailParam(c *gin.Context, message string) {
 	Fail(c, CodeParamError, message)
 }
 
-// FailAuth 认证失败响应
+// FailAuth 认证失败响应（HTTP 401），对齐 tech.md §3.2 错误码。
+// Axios 仅在非 2xx 时触发 error 拦截器，返回 401 是前端无感刷新链路的前提。
 func FailAuth(c *gin.Context, message string) {
-	Fail(c, CodeAuthFailed, message)
+	c.JSON(http.StatusUnauthorized, Body{
+		Code:      CodeAuthFailed,
+		Message:   message,
+		Data:      nil,
+		RequestID: getRequestID(c),
+		Timestamp: time.Now().Format(time.RFC3339),
+	})
 }
 
-// FailAuthDenied 授权失败响应
+// FailAuthDenied 授权失败响应（HTTP 403），对齐 tech.md §3.2 错误码。
 func FailAuthDenied(c *gin.Context, message string) {
-	Fail(c, CodeAuthDenied, message)
+	c.JSON(http.StatusForbidden, Body{
+		Code:      CodeAuthDenied,
+		Message:   message,
+		Data:      nil,
+		RequestID: getRequestID(c),
+		Timestamp: time.Now().Format(time.RFC3339),
+	})
 }
 
 // FailBusiness 业务错误响应

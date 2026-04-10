@@ -70,6 +70,8 @@ type JWTConfig struct {
 	RefreshSecret      string `mapstructure:"refresh_secret"`
 	ExpireHours        int    `mapstructure:"expire_hours"`
 	RefreshExpireHours int    `mapstructure:"refresh_expire_hours"`
+	CookieDomain       string `mapstructure:"cookie_domain"`
+	CookieSecure       bool   `mapstructure:"cookie_secure"`
 }
 
 // Load 加载配置：先加载 .env 文件，再按环境读取 YAML，最后用环境变量覆盖。
@@ -170,6 +172,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jwt.secret", "")
 	v.SetDefault("jwt.refresh_secret", "")
 	v.SetDefault("jwt.expire_hours", DefaultJWTExpireHours)
+	v.SetDefault("jwt.refresh_expire_hours", DefaultJWTRefreshExpireHours)
+	v.SetDefault("jwt.cookie_domain", "")
+	v.SetDefault("jwt.cookie_secure", false)
 }
 
 // getEnvValue 按优先级读取环境变量，均未设置时返回最后一个参数作为默认值。
@@ -199,6 +204,29 @@ func (c *Conf) Validate() error {
 	}
 	if err := c.validateOssRequired(); err != nil {
 		return err
+	}
+	if err := c.validateJWTRequired(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateJWTRequired 校验 JWT 配置：密钥必填且长度 ≥ 32，生产环境强制 CookieSecure。
+func (c *Conf) validateJWTRequired() error {
+	if strings.TrimSpace(c.JWT.Secret) == "" {
+		return fmt.Errorf("jwt.secret is required (set VEHIVLE_JWT_SECRET)")
+	}
+	if len(c.JWT.Secret) < 32 {
+		return fmt.Errorf("jwt.secret must be at least 32 characters for HS256 security")
+	}
+	if strings.TrimSpace(c.JWT.RefreshSecret) == "" {
+		return fmt.Errorf("jwt.refresh_secret is required (set VEHIVLE_JWT_REFRESH_SECRET)")
+	}
+	if len(c.JWT.RefreshSecret) < 32 {
+		return fmt.Errorf("jwt.refresh_secret must be at least 32 characters for HS256 security")
+	}
+	if c.App.Env == "prod" && !c.JWT.CookieSecure {
+		return fmt.Errorf("jwt.cookie_secure must be true in production (HTTPS only)")
 	}
 	return nil
 }

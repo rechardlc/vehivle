@@ -2,6 +2,7 @@ package router
 
 import (
 	"log/slog"
+	"vehivle/configs"
 	"vehivle/internal/infrastructure/oss"
 	"vehivle/internal/transport/http/handler"
 	"vehivle/internal/transport/http/middleware"
@@ -17,29 +18,33 @@ type Router struct {
 	engine *gin.Engine
 	logger logger.Logger
 	db     *gorm.DB
-	oss    oss.MinioClient
+	oss oss.MinioClient
+	jwt configs.JWTConfig
 }
 
 // New 创建 Router 实例。
-func New(engine *gin.Engine, logger logger.Logger, db *gorm.DB, ossClient oss.MinioClient) *Router {
-	return &Router{engine: engine, logger: logger, db: db, oss: ossClient}
+func New(engine *gin.Engine, logger logger.Logger, db *gorm.DB, ossClient oss.MinioClient, jwtCfg configs.JWTConfig) *Router {
+	return &Router{engine: engine, logger: logger, db: db, oss: ossClient, jwt: jwtCfg}
 }
 
 // Register 注册 API 路由分组（admin、public）、健康检查等路由。
 func (r *Router) Register() error {
 	// 健康检查：GET /health，用于探活、负载均衡健康检查等。
 	r.engine.GET("/health", r.healthHandler)
-	// 注册auth路由
-	auth := r.engine.Group("/api/v1/admin/auth")
-	authHander := handler.NewAuth(r.db)
+	// 注册 auth 路由（公开组，无 JWT 中间件）
+	authGroup := r.engine.Group("/api/v1/admin/auth")
+	authHandler := handler.NewAuth(r.db, r.jwt)
 	{
-		auth.POST("/login", authHander.Login)
-		// auth.POST("/refresh", handler.NewAuth(r.db).Refresh)
+		authGroup.POST("/login", authHandler.Login)
+		authGroup.POST("/refresh", authHandler.Refresh)
+		authGroup.POST("/logout", authHandler.Logout)
+		authGroup.GET("/me", middleware.JWTAuth(r.jwt.Secret), authHandler.Me)
 	}
 	// 注册admin路由
 	v1 := r.engine.Group("/api/v1")
 	// 注册admin路由组
 	admin := v1.Group("/admin")
+	admin.Use(middleware.JWTAuth(r.jwt.Secret))
 	{
 		// 注册user路由组
 		user := admin.Group("/user")
