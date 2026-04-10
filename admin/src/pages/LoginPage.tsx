@@ -1,14 +1,9 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useMutation } from "@tanstack/react-query";
-import { Alert, App, Button, Card, Form, Input, Space, Typography } from "antd";
+import { App, Button, Card, Form, Input, Space, Typography } from "antd";
 import { Navigate, useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth";
-import { getAuthState, setAuthState } from "../state/auth";
-
-/**
- * TODO(登录): 与 AdminLayout 一并恢复「未登录不可进后台」：校验 token、未登录跳转 /login、对接真实登录接口。
- * 当前开发阶段后台已临时放行（见 `AdminLayout` 与 `LOGIN_BYPASS_GUEST`）。
- */
+import { getStoredUser, setStoredUser } from "../state/auth";
 
 interface LoginFormValue {
   username: string;
@@ -18,12 +13,16 @@ interface LoginFormValue {
 export function LoginPage() {
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const auth = getAuthState();
+  const storedUser = getStoredUser();
 
   const mutation = useMutation({
-    mutationFn: (payload: LoginFormValue) => authApi.login(payload),
-    onSuccess: (payload) => {
-      setAuthState(payload);
+    mutationFn: async (payload: LoginFormValue) => {
+      await authApi.login(payload);
+      const user = await authApi.me();
+      return user;
+    },
+    onSuccess: (user) => {
+      setStoredUser(user);
       message.success("登录成功");
       navigate("/dashboard", { replace: true });
     },
@@ -32,7 +31,7 @@ export function LoginPage() {
     }
   });
 
-  if (auth) {
+  if (storedUser) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -50,24 +49,35 @@ export function LoginPage() {
         </div>
 
         <Card className="login-card" style={{ width: "100%" }}>
-            <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+            <Space direction="vertical" size={16} style={{ width: "100%" }}>
             <Typography.Title level={3} style={{ marginBottom: 0 }}>
               后台登录
             </Typography.Title>
-            <Typography.Text type="secondary">测试账号：admin/admin123 或 operator/operator123</Typography.Text>
-            <Alert type="info" showIcon message="当前接口为内存 Mock 数据" />
             <Form<LoginFormValue>
               layout="vertical"
-              initialValues={{ username: "admin", password: "admin123" }}
               onFinish={(values) => mutation.mutate(values)}
             >
-              <Form.Item label="用户名" name="username" rules={[{ required: true, message: "请输入用户名" }]}>
+              <Form.Item
+                label="用户名"
+                name="username"
+                rules={[{ required: true, message: "请输入用户名" }]}
+              >
                 <Input prefix={<UserOutlined />} placeholder="请输入用户名" />
               </Form.Item>
-              <Form.Item label="密码" name="password" rules={[{ required: true, message: "请输入密码" }]}>
+              <Form.Item
+                label="密码"
+                name="password"
+                rules={[{ required: true, message: "请输入密码" }]}
+              >
                 <Input.Password prefix={<LockOutlined />} placeholder="请输入密码" />
               </Form.Item>
-              <Button className="pressable" type="primary" htmlType="submit" block loading={mutation.isPending}>
+              <Button
+                className="pressable"
+                type="primary"
+                htmlType="submit"
+                block
+                loading={mutation.isPending}
+              >
                 登录
               </Button>
             </Form>

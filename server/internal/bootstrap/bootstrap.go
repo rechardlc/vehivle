@@ -174,4 +174,21 @@ func applyOssPublicReadPolicy(ctx context.Context, client *minio.Client, bucket 
 	return client.SetBucketPolicy(ctx, bucket, policy)
 }
 
-// 后续可增加 redis、jwt、Ping 等检查。
+/**
+JWT 初始化
+*/
+func (b *Bootstrap) jwtConnPool() error {
+	if b.cfg.JWT.Secret == "" {
+		return fmt.Errorf("JWT 密钥为空")
+	}
+	if b.cfg.JWT.RefreshSecret == "" {
+		return fmt.Errorf("JWT 刷新密钥为空")
+	}
+	if b.cfg.JWT.ExpireHours <= 0 {
+		return fmt.Errorf("JWT 过期时间为空")
+	}
+	if b.cfg.JWT.RefreshExpireHours <= 0 {
+		return fmt.Errorf("JWT 刷新过期时间为空")
+	}
+	return nil
+}

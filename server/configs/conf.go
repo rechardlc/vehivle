@@ -66,8 +66,10 @@ type OssConfig struct {
 
 // JWTConfig JWT 认证配置。
 type JWTConfig struct {
-	Secret      string `mapstructure:"secret"`
-	ExpireHours int    `mapstructure:"expire_hours"`
+	Secret             string `mapstructure:"secret"`
+	RefreshSecret      string `mapstructure:"refresh_secret"`
+	ExpireHours        int    `mapstructure:"expire_hours"`
+	RefreshExpireHours int    `mapstructure:"refresh_expire_hours"`
 }
 
 // Load 加载配置：先加载 .env 文件，再按环境读取 YAML，最后用环境变量覆盖。
@@ -166,6 +168,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("oss.enable_public_read", DefaultOSSEnablePublicRead)
 
 	v.SetDefault("jwt.secret", "")
+	v.SetDefault("jwt.refresh_secret", "")
 	v.SetDefault("jwt.expire_hours", DefaultJWTExpireHours)
 }
 

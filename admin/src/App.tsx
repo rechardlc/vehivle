@@ -18,34 +18,24 @@ export default function App() {
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: "#ff6a00",
-          colorInfo: "#0ea5e9",
-          colorSuccess: "#16a34a",
-          colorWarning: "#f59e0b",
-          colorError: "#ef4444",
-          borderRadius: 14,
+          colorPrimary: "#f97316", // Orange-500: sharp active personality
+          colorBgContainer: "#ffffff",
+          borderRadius: 8, // Just a tiny bit of roundness
           fontFamily: "var(--font-ui)"
         },
         components: {
           Layout: {
-            bodyBg: "transparent",
-            headerBg: "transparent",
-            siderBg: "transparent",
-            triggerBg: "transparent"
+            bodyBg: "#f0f2f5",
+            headerBg: "#ffffff",
+            siderBg: "#0f172a", // Sleek dark sidebar
           },
           Menu: {
-            itemBg: "transparent",
-            itemHoverBg: "rgba(255, 106, 0, 0.1)",
-            itemSelectedBg: "rgba(255, 106, 0, 0.18)",
-            itemSelectedColor: "rgba(11, 19, 32, 0.96)",
-            itemColor: "rgba(11, 19, 32, 0.8)"
+            itemBorderRadius: 8,
+            darkItemBg: "#0f172a",
+            darkSubMenuItemBg: "#0f172a",
           },
           Card: {
             headerBg: "transparent"
-          },
-          Button: {
-            borderRadius: 12,
-            controlHeight: 38
           }
         }
       }}

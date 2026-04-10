@@ -13,23 +13,26 @@ export interface PagedResult<T> {
   pageSize: number;
 }
 
-export type Role = "super_admin" | "operator";
-export type UserStatus = "active" | "inactive";
+export type Role = "super_admin" | "editor";
 
 export interface AdminUser {
   id: string;
   username: string;
-  password: string;
   role: Role;
-  status: UserStatus;
-  lastLoginAt: string;
 }
 
-export interface AuthPayload {
-  token: string;
-  refreshToken: string;
-  user: Omit<AdminUser, "password">;
+/**
+ * 登录成功响应体（Token 通过 httpOnly Cookie 传输，不在 body 中返回）。
+ * expiresIn: Access Token 有效期（秒），前端可用于主动续签倒计时。
+ */
+export interface LoginResult {
+  expiresIn: number;
 }
+
+/**
+ * /auth/me 返回的当前用户信息。
+ */
+export type AuthMeResult = AdminUser;
 
 /** 分类启用状态：1=启用 0=禁用（与后端 JSON 数字一致） */
 export type CategoryStatus = 0 | 1;

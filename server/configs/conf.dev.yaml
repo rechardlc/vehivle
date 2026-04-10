@@ -25,3 +25,4 @@ oss:
 
 jwt:
   expire_hours: 24
+  refresh_expire_hours: 168

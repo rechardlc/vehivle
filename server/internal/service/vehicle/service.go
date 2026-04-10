@@ -11,6 +11,7 @@ import (
 	"vehivle/internal/domain/enum"
 	"vehivle/internal/domain/model"
 	"vehivle/internal/domain/rule"
+	"vehivle/pkg/response"
 )
 
 // VehicleRepo 定义了车辆仓库接口
@@ -18,6 +19,8 @@ type VehicleRepo interface {
 	GetById(ctx context.Context, id string) (*model.Vehicle, error)
 	Update(ctx context.Context, vehicle *model.Vehicle) error
 	List(ctx context.Context, onlyPublished bool) ([]*model.Vehicle, error)
+	ListByQuery(ctx context.Context, q model.VehicleListQuery) ([]*model.Vehicle, error)
+	CountByQuery(ctx context.Context, q model.VehicleListQuery) (int64, error)
 	Create(ctx context.Context, vehicle *model.Vehicle) (*model.Vehicle, error)
 }
 
@@ -39,6 +42,57 @@ func (s *Service) GetById(ctx context.Context, id string) (*model.Vehicle, error
 // List 返回车型列表；公开接口传 onlyPublished=true，后台管理传 false。
 func (s *Service) List(ctx context.Context, onlyPublished bool) ([]*model.Vehicle, error) {
 	return s.vehicles.List(ctx, onlyPublished)
+}
+
+// vehicleListPage 根据总数与分页参数构造分页元数据（与分类列表 service 行为一致）。
+func vehicleListPage(total int64, page, pageSize int) response.PageResult {
+	var totalPages int
+	var sizeInJSON int
+	if pageSize > 0 {
+		sizeInJSON = pageSize
+		if total == 0 {
+			totalPages = 0
+		} else {
+			totalPages = int((total + int64(pageSize) - 1) / int64(pageSize))
+		}
+	} else {
+		if total == 0 {
+			totalPages = 0
+			sizeInJSON = 0
+		} else {
+			totalPages = 1
+			sizeInJSON = int(total)
+		}
+	}
+	return response.PageResult{
+		Page:       page,
+		PageSize:   sizeInJSON,
+		Total:      int(total),
+		TotalPages: totalPages,
+	}
+}
+
+// ListAdmin 管理端分页列表，返回 list + page。
+func (s *Service) ListAdmin(ctx context.Context, q model.VehicleListQuery) (response.ListResult[*model.Vehicle], error) {
+	count, err := s.vehicles.CountByQuery(ctx, q)
+	if err != nil {
+		return response.ListResult[*model.Vehicle]{}, err
+	}
+	pageMeta := vehicleListPage(count, q.Page, q.PageSize)
+	if count == 0 {
+		return response.ListResult[*model.Vehicle]{
+			List: []*model.Vehicle{},
+			Page: &pageMeta,
+		}, nil
+	}
+	items, err := s.vehicles.ListByQuery(ctx, q)
+	if err != nil {
+		return response.ListResult[*model.Vehicle]{}, err
+	}
+	return response.ListResult[*model.Vehicle]{
+		List: items,
+		Page: &pageMeta,
+	}, nil
 }
 
 // Create 创建车型
@@ -118,14 +172,24 @@ func (s *Service) SoftDelete(ctx context.Context, id string) error {
 }
 
 // Publish 发布车辆
+/**
+ * 发布车辆
+ * @param ctx context.Context
+ * @param id string
+ * @param req rule.PublishRequirements
+ * @return error
+ */
 func (s *Service) Publish(ctx context.Context, id string, req rule.PublishRequirements) error {
+	// 根据id查询车型
 	v, err := s.vehicles.GetById(ctx, id)
 	if err != nil {
 		return err
 	}
+	// 判断是否可以发布
 	if ok, errs := rule.CanPublishVehicle(v, &req); !ok {
 		return fmt.Errorf("%s", strings.Join(errs, "; "))
 	}
+	// 发布车型
 	v.Publish()
 	return s.vehicles.Update(ctx, v)
 }

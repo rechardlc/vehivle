@@ -7,6 +7,7 @@ import (
 	"vehivle/internal/domain/model"
 	"vehivle/internal/repository/postgres"
 	"vehivle/internal/service/category"
+	"vehivle/internal/transport/http/helper"
 	"vehivle/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -93,21 +94,12 @@ func (c *Categories) List(ctx *gin.Context) {
 	// validFields := [7]string{"keyword", "level", "status", "page", "pageSize", "sortField", "sortOrder"}
 	sf := strings.TrimSpace(raw.SortField)
 	so := strings.TrimSpace(strings.ToLower(raw.SortOrder))
-	if sf != "" && sf != "createdAt" {
-		response.FailParam(ctx, "无效的 sortField，仅支持 createdAt")
+	_, err := helper.IsValidSortFieldAndOrder(sf, so)
+	if err != nil {
+		response.FailParam(ctx, err.Error())
 		return
 	}
-	if so != "" && so != "asc" && so != "desc" {
-		response.FailParam(ctx, "无效的 sortOrder，仅支持 asc 或 desc")
-		return
-	}
-	if sf == "" && so != "" {
-		response.FailParam(ctx, "传 sortOrder 时必须同时传 sortField=createdAt")
-		return
-	}
-	if sf == "createdAt" && so == "" {
-		so = "desc"
-	}
+
 
 	// 如果page小于1，则设置为1
 	page := raw.Page

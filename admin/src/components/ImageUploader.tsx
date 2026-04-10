@@ -11,6 +11,8 @@ interface ImageUploaderProps {
   maxSizeMB?: number;
   /** 编辑回显：接口返回的 coverImageUrl（value 为 media id 时用于预览） */
   previewFromServer?: string;
+  /** 仅展示预览，隐藏上传（查看态） */
+  readOnly?: boolean;
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -27,7 +29,8 @@ export function ImageUploader({
   onChange,
   placeholder = "请上传图片",
   maxSizeMB = 5,
-  previewFromServer
+  previewFromServer,
+  readOnly = false
 }: ImageUploaderProps) {
   const { message } = App.useApp();
   const [uploading, setUploading] = useState(false);
@@ -76,6 +79,25 @@ export function ImageUploader({
     previewDataUrl ??
     previewFromServer ??
     (value && (value.startsWith("http") || value.startsWith("data:")) ? value : undefined);
+
+  if (readOnly) {
+    return (
+      <Space orientation="vertical" size={8}>
+        {displaySrc ? (
+          <Image
+            src={displaySrc}
+            width={160}
+            height={120}
+            style={{ objectFit: "cover", borderRadius: 6, border: "1px solid #f0f0f0" }}
+            preview={{ mask: "预览" }}
+            fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120'%3E%3Crect fill='%23f0f0f0' width='100%25' height='100%25'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='12'%3E加载失败%3C/text%3E%3C/svg%3E"
+          />
+        ) : (
+          <Typography.Text type="secondary">{placeholder}</Typography.Text>
+        )}
+      </Space>
+    );
+  }
 
   return (
     <Space orientation="vertical" size={8}>

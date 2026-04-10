@@ -23,3 +23,22 @@ func IsValidFields(ctx *gin.Context, fields []string) (bool, error) {
 	}
 	return true, nil // 所有字段都合法
 }
+
+/**
+ * 判断排序字段和排序顺序是否合法
+ * @param sortField 排序字段
+ * @param sortOrder 排序顺序
+ * @return bool 是否合法
+ * @return error 错误信息
+ */
+func IsValidSortFieldAndOrder(sortField string, sortOrder string) (bool, error) {
+	// 如果sortField不为空，并且sortField不等于createdAt，则返回错误
+	if sortField != "" && sortField != "createdAt" {
+		return false, fmt.Errorf("无效的 sortField，仅支持 createdAt")
+	}
+	// 如果sortOrder不为空，并且sortOrder不等于asc或desc，则返回错误
+	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
+		return false, fmt.Errorf("无效的 sortOrder，仅支持 asc 或 desc")
+	}
+	return true, nil
+}

@@ -7,6 +7,20 @@ export interface VehicleListQuery {
   keyword?: string;
   status?: VehicleStatus;
   categoryId?: string;
+  /** 与后端一致：仅支持 createdAt */
+  sortField?: "createdAt";
+  sortOrder?: "asc" | "desc";
+}
+
+/** 与后端 response.ListResult 对齐 */
+export interface VehicleListResponse {
+  list: Vehicle[];
+  page: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 /**
@@ -24,32 +38,45 @@ function uiPriceToBackend(mode: PriceMode): string {
 }
 
 /** 将后端 Vehicle JSON（camelCase）转为管理端 VehicleListItem */
-function mapToListItem(v: Vehicle): VehicleListItem {
+function mapToListItem(v: Vehicle & { categoryName?: string }): VehicleListItem {
   return {
     ...v,
     priceMode: backendPriceToUi(v.priceMode as string),
-    categoryName: ""
+    categoryName: typeof v.categoryName === "string" ? v.categoryName : ""
   };
 }
 
 export const vehiclesApi = {
+  /**
+   * 管理端车型分页列表：查询参数与后端 VehicleListQuery 对齐，响应为 { list, page }。
+   */
   async list(query: VehicleListQuery): Promise<PagedResult<VehicleListItem>> {
-    const res = await requestData<{ items: Vehicle[] }>(http.get("/admin/vehicles"));
-    let rows = res.items.map(mapToListItem);
-    const kw = (query.keyword ?? "").trim().toLowerCase();
+    const params: Record<string, string | number> = {
+      page: query.page,
+      pageSize: query.pageSize
+    };
+    const kw = (query.keyword ?? "").trim();
     if (kw.length > 0) {
-      rows = rows.filter((r) => r.name.toLowerCase().includes(kw));
+      params.keyword = kw;
     }
-    if (query.status) {
-      rows = rows.filter((r) => r.status === query.status);
+    if (query.status !== undefined) {
+      params.status = query.status;
     }
-    if (query.categoryId) {
-      rows = rows.filter((r) => r.categoryId === query.categoryId);
+    if (query.categoryId !== undefined) {
+      params.categoryId = query.categoryId;
     }
-    const total = rows.length;
-    const start = (query.page - 1) * query.pageSize;
-    const list = rows.slice(start, start + query.pageSize);
-    return { list, total, page: query.page, pageSize: query.pageSize };
+    if (query.sortField === "createdAt") {
+      params.sortField = "createdAt";
+      params.sortOrder = query.sortOrder === "asc" ? "asc" : "desc";
+    }
+    const data = await requestData<VehicleListResponse>(http.get("/admin/vehicles", { params }));
+    const list = data.list.map(mapToListItem);
+    return {
+      list,
+      total: data.page.total,
+      page: data.page.page,
+      pageSize: data.page.pageSize
+    };
   },
 
   async create(

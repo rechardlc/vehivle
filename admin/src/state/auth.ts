@@ -1,45 +1,31 @@
-import type { AuthPayload } from "../types";
+import type { AdminUser } from "../types";
 
-const AUTH_STORAGE_KEY = "vehivle_admin_auth";
-
-export interface StoredAuthState {
-  token: string;
-  refreshToken: string;
-  user: AuthPayload["user"];
-}
+const AUTH_USER_KEY = "vehivle_admin_user";
 
 /**
- * TODO(登录): 启用 AdminLayout 未登录跳转 /login 后删除此占位与 AdminLayout 中的 `?? LOGIN_BYPASS_GUEST`。
- * 开发期无登录态时用于顶栏展示，避免路由拦截阻断后台。
+ * 从 localStorage 读取缓存的用户信息（仅 UI 展示用，不代表 Cookie 有效）。
+ * 真实登录状态以 httpOnly Cookie 为准，需通过 /auth/me 校验。
  */
-export const LOGIN_BYPASS_GUEST: StoredAuthState = {
-  token: "",
-  refreshToken: "",
-  user: {
-    id: "guest",
-    username: "访客",
-    role: "operator",
-    status: "active",
-    lastLoginAt: ""
-  }
-};
-
-export function getAuthState(): StoredAuthState | null {
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
+export function getStoredUser(): AdminUser | null {
+  const raw = localStorage.getItem(AUTH_USER_KEY);
+  if (!raw) return null;
   try {
-    return JSON.parse(raw) as StoredAuthState;
+    return JSON.parse(raw) as AdminUser;
   } catch {
     return null;
   }
 }
 
-export function setAuthState(payload: StoredAuthState): void {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+/**
+ * 登录成功或 /auth/me 校验通过后，缓存用户信息供 UI 即时展示。
+ */
+export function setStoredUser(user: AdminUser): void {
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 }
 
-export function clearAuthState(): void {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
+/**
+ * 清除本地缓存的用户信息（配合服务端 Cookie 清除，完成登出）。
+ */
+export function clearStoredUser(): void {
+  localStorage.removeItem(AUTH_USER_KEY);
 }

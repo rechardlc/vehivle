@@ -35,5 +35,6 @@ const (
 
 // JWT 默认值
 const (
-	DefaultJWTExpireHours = 24
+	DefaultJWTExpireHours        = 24
+	DefaultJWTRefreshExpireHours = 168
 )

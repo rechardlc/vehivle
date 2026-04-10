@@ -8,9 +8,11 @@ import {
   SettingOutlined,
   TagsOutlined
 } from "@ant-design/icons";
-import { Avatar, Button, Layout, Menu, Space, Typography } from "antd";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { clearAuthState, getAuthState, LOGIN_BYPASS_GUEST } from "../state/auth";
+import { useQuery } from "@tanstack/react-query";
+import { App, Avatar, Button, Layout, Menu, Space, Spin, Typography } from "antd";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { authApi } from "../api/auth";
+import { clearStoredUser, getStoredUser, setStoredUser } from "../state/auth";
 
 const { Header, Sider, Content } = Layout;
 
@@ -29,24 +31,67 @@ function resolveSelectedKey(pathname: string): string {
 }
 
 export function AdminLayout() {
-  // TODO(登录): 恢复 `const auth = getAuthState();` 与下方未登录跳转，移除访客回退（与 LoginPage 正式对接）。
-  const auth = getAuthState() ?? LOGIN_BYPASS_GUEST;
   const navigate = useNavigate();
   const location = useLocation();
+  const { message } = App.useApp();
   const selectedKey = resolveSelectedKey(location.pathname);
   const currentMenu = menus.find((item) => item.key === selectedKey);
 
+  /**
+   * 启动时通过 /auth/me 校验 Cookie 有效性并获取最新用户信息。
+   * initialData 使用 localStorage 缓存，避免每次刷新页面出现 loading 闪烁。
+   */
+  const cachedUser = getStoredUser();
+  const { data: user, isLoading, isError } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: async () => {
+      const result = await authApi.me();
+      setStoredUser(result);
+      return result;
+    },
+    initialData: cachedUser ?? undefined,
+    retry: false,
+    staleTime: 5 * 60 * 1000
+  });
+
+  if (isLoading && !cachedUser) {
+    return (
+      <div className="admin-shell" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <Spin size="large" tip="正在验证登录状态…" />
+      </div>
+    );
+  }
+
+  if (isError && !cachedUser) {
+    clearStoredUser();
+    return <Navigate to="/login" replace />;
+  }
+
+  const displayUser = user ?? cachedUser;
+  if (!displayUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  /** 调用后端登出接口清除 Cookie，同时清除本地缓存 */
+  async function handleLogout() {
+    try {
+      await authApi.logout();
+    } catch {
+      // 即使后端登出失败，也清除本地状态（Cookie 可能已失效）
+    }
+    clearStoredUser();
+    message.success("已退出登录");
+    navigate("/login", { replace: true });
+  }
+
   return (
     <div className="admin-shell">
-      <div className="admin-ambient" />
       <Layout className="admin-layout">
         <Sider width={276} theme="light" className="admin-sider">
           <div className="brand">
-            <div className="brand-pill">VEHIVLE</div>
-            <Typography.Title level={5} className="brand-title">
-              车辆电子展厅后台
+            <Typography.Title level={4} className="brand-title" style={{ margin: 0 }}>
+              车辆电子展厅
             </Typography.Title>
-            <Typography.Text className="brand-subtitle">Light Skeuomorphic Console</Typography.Text>
           </div>
           <Menu
             mode="inline"
@@ -67,11 +112,11 @@ export function AdminLayout() {
             <Space size={10}>
               <Button className="pressable soft" type="text" icon={<BellOutlined />} />
               <div className="user-chip">
-                <Avatar>{auth.user.username.slice(0, 1).toUpperCase()}</Avatar>
+                <Avatar>{displayUser.username.slice(0, 1).toUpperCase()}</Avatar>
                 <div className="user-chip-meta">
-                  <Typography.Text className="user-chip-name">{auth.user.username}</Typography.Text>
+                  <Typography.Text className="user-chip-name">{displayUser.username}</Typography.Text>
                   <Typography.Text className="user-chip-role">
-                    {auth.user.role === "super_admin" ? "超级管理员" : "运营编辑"}
+                    {displayUser.role === "super_admin" ? "超级管理员" : "运营编辑"}
                   </Typography.Text>
                 </div>
               </div>
@@ -79,10 +124,7 @@ export function AdminLayout() {
                 className="pressable soft"
                 type="text"
                 icon={<LogoutOutlined />}
-                onClick={() => {
-                  clearAuthState();
-                  navigate("/login", { replace: true });
-                }}
+                onClick={handleLogout}
               >
                 退出登录
               </Button>

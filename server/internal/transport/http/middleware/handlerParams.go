@@ -23,6 +23,11 @@ func ValidateParams(allowFields []string) gin.HandlerFunc {
 	}
 	// 返回一个gin.HandlerFunc类型的函数，用于验证参数
 	return func(c *gin.Context) {
+		// 只处理get请求
+		if c.Request.Method != "GET" {
+			c.Next()
+			return
+		}
 		queryParams := c.Request.URL.Query()
 		// 遍历queryParams，将queryParams中的每个字段添加到allowMaps中
 		for key := range queryParams {

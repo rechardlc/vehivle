@@ -29,6 +29,13 @@ func New(engine *gin.Engine, logger logger.Logger, db *gorm.DB, ossClient oss.Mi
 func (r *Router) Register() error {
 	// 健康检查：GET /health，用于探活、负载均衡健康检查等。
 	r.engine.GET("/health", r.healthHandler)
+	// 注册auth路由
+	auth := r.engine.Group("/api/v1/admin/auth")
+	authHander := handler.NewAuth(r.db)
+	{
+		auth.POST("/login", authHander.Login)
+		// auth.POST("/refresh", handler.NewAuth(r.db).Refresh)
+	}
 	// 注册admin路由
 	v1 := r.engine.Group("/api/v1")
 	// 注册admin路由组
@@ -46,12 +53,13 @@ func (r *Router) Register() error {
 		// 注册vehicles路由组
 		vehicles := admin.Group("/vehicles")
 		vehiclesHandler := handler.NewVehicles(r.db, r.oss)
+		vehicleList := []string{"keyword", "categoryId", "status", "page", "pageSize", "sortField", "sortOrder"}
 		{
 			vehicles.POST("/batch-status", vehiclesHandler.BatchStatus)
 			vehicles.POST("/:vehicle_id/publish", vehiclesHandler.Publish)
 			vehicles.POST("/:vehicle_id/unpublish", vehiclesHandler.Unpublish)
 			vehicles.POST("/:vehicle_id/duplicate", vehiclesHandler.Duplicate)
-			vehicles.GET("", vehiclesHandler.List)
+			vehicles.GET("", middleware.ValidateParams(vehicleList), vehiclesHandler.List)
 			vehicles.POST("", vehiclesHandler.Create)
 			vehicles.PUT("/:vehicle_id", vehiclesHandler.Update)
 			vehicles.DELETE("/:vehicle_id", vehiclesHandler.Delete)
@@ -70,10 +78,11 @@ func (r *Router) Register() error {
 		uploadHandler := handler.NewUpload(r.oss, r.db)
 		admin.POST("/upload/images", uploadHandler.UploadImages)
 	}
-	// 注册public路由
+	// 注册public路由（与 admin 列表 query 对齐，不含 status；固定仅已上架）
 	public := v1.Group("/public")
 	{
-		public.GET("/vehicles", handler.NewVehicles(r.db, r.oss).List)
+		publicVehicleList := []string{"keyword", "categoryId", "page", "pageSize", "sortField", "sortOrder"}
+		public.GET("/vehicles", middleware.ValidateParams(publicVehicleList), handler.NewVehicles(r.db, r.oss).List)
 	}
 	// 通配：未注册路由返回统一 404
 	r.engine.NoRoute(r.noRouteHandler)
