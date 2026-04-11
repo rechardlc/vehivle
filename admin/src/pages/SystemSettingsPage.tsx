@@ -15,8 +15,11 @@ export function SystemSettingsPage() {
     queryFn: settingsApi.get
   });
 
-  const updateMutation = useMutation({
-    mutationFn: settingsApi.update,
+  const isNew = !settingsQuery.data;
+
+  const saveMutation = useMutation({
+    mutationFn: (values: Partial<SystemSettings>) =>
+      isNew ? settingsApi.create(values) : settingsApi.update(values),
     onSuccess: () => {
       message.success("系统设置已保存");
       settingsQuery.refetch();
@@ -26,6 +29,7 @@ export function SystemSettingsPage() {
 
   useEffect(() => {
     if (!settingsQuery.data) {
+      form.setFieldsValue({ defaultPriceMode: "negotiable" });
       return;
     }
     form.setFieldsValue(settingsQuery.data);
@@ -36,7 +40,7 @@ export function SystemSettingsPage() {
       {settingsQuery.isLoading ? (
         <Skeleton active />
       ) : (
-        <Form form={form} layout="vertical" onFinish={(values) => updateMutation.mutate(values)}>
+        <Form form={form} layout="vertical" onFinish={(values) => saveMutation.mutate(values)}>
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item name="companyName" label="公司名称" rules={[{ required: true, message: "请输入公司名称" }]}>
@@ -48,8 +52,8 @@ export function SystemSettingsPage() {
                 <Select
                   placeholder="请选择默认价格模式"
                   options={[
-                    { label: "建议零售价", value: "msrp" },
-                    { label: "面议", value: "negotiable" }
+                    { label: "显示零售价", value: "msrp" },
+                    { label: "电话询价", value: "negotiable" }
                   ]}
                 />
               </Form.Item>
@@ -71,7 +75,10 @@ export function SystemSettingsPage() {
             </Col>
             <Col xs={24}>
               <Form.Item name="defaultShareImage" label="默认分享图片">
-                <ImageUploader placeholder="请上传默认分享图片" />
+                <ImageUploader
+                  placeholder="请上传默认分享图片"
+                  previewFromServer={settingsQuery.data?.defaultShareImageUrl}
+                />
               </Form.Item>
             </Col>
             <Col xs={24}>
@@ -80,8 +87,8 @@ export function SystemSettingsPage() {
               </Form.Item>
             </Col>
             <Col xs={24}>
-              <Button className="pressable" type="primary" htmlType="submit" loading={updateMutation.isPending}>
-                保存设置
+              <Button className="pressable" type="primary" htmlType="submit" loading={saveMutation.isPending}>
+                {isNew ? "创建配置" : "保存设置"}
               </Button>
             </Col>
           </Row>

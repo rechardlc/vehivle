@@ -42,9 +42,10 @@ func GenerateToken(secret string, duration time.Duration, userID string, usernam
 		Username: username,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    issuer,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)), // 过期时间
+			IssuedAt:  jwt.NewNumericDate(time.Now()), // 签发时间
+			NotBefore: jwt.NewNumericDate(time.Now()), // 生效时间
+			Issuer:    issuer, // 签发者
 		},
 	}
 	// 创建新的令牌

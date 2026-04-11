@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"vehivle/internal/domain/model"
+
 	"vehivle/pkg/jwt"
 )
 
@@ -31,9 +32,9 @@ type JWTConfig struct {
 
 // LoginResult 登录成功后的 Token 与有效期信息。
 type LoginResult struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresIn    int // Access Token 有效期（秒）
+	AccessToken      string
+	RefreshToken     string
+	ExpiresIn        int // Access Token 有效期（秒）
 	RefreshExpiresIn int // Refresh Token 有效期（秒）
 }
 

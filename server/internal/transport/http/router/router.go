@@ -79,6 +79,14 @@ func (r *Router) Register() error {
 			categories.PUT("/:category_id", categoriesHandler.Update)
 			categories.DELETE("/:category_id", categoriesHandler.Delete)
 		}
+		// 系统配置
+		sys := admin.Group("/system-settings")
+		sysHandler := handler.NewSysSettings(r.db, r.oss)
+		{
+			sys.GET("", sysHandler.Detail)
+			sys.POST("", sysHandler.Create)
+			sys.PUT("", sysHandler.Update)
+		}
 		// OSS 上传（TODO: 上线前挂载认证中间件）
 		uploadHandler := handler.NewUpload(r.oss, r.db)
 		admin.POST("/upload/images", uploadHandler.UploadImages)

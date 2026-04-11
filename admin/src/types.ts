@@ -102,6 +102,7 @@ export interface SystemSettings {
   disclaimerText: string;
   defaultShareTitle: string;
   defaultShareImage: string;
+  defaultShareImageUrl?: string;
   updatedAt: string;
 }
 
