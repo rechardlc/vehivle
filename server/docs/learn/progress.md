@@ -1,6 +1,6 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)、[lesson-20260409.md](./lesson-20260409.md)、[lesson-20260410.md](./lesson-20260410.md)（最新：**JWT 认证闭环**——双 Token + httpOnly Cookie + 角色鉴权 + 安全加固）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)、[lesson-20260409.md](./lesson-20260409.md)、[lesson-20260410.md](./lesson-20260410.md)、[lesson-20260411.md](./lesson-20260411.md)、[lesson-20260412.md](./lesson-20260412.md)、[lesson-20260413.md](./lesson-20260413.md)（最新：**参数模板全链路**——`000005` 迁移、`ParamTemplate` + `ParamTemplateItem` 建模、GORM 一对多事务更新、`buildHandlers()` 新模块接入）。索引见 [learn/README.md](./README.md)。
 
 ---
 
@@ -11,7 +11,7 @@
 | 1 | 第 1 步：工程壳（configs、logger、response、main、bootstrap） | ✅ 已完成 |
 | 2 | 第 2 步：HTTP 基座（路由分组、router、handler、NoRoute/NoMethod 通配、完整中间件链） | ✅ 已完成 |
 | 3 | 第 3 步：业务语义（domain/model、enum、rule） | ✅ 已完成 |
-| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移 **`000001`/`000002`/`000003`**（含 **media_assets**）；✅ `VehicleRepo`：`GetById`/`Update`/`List`/`Create`；✅ `CategoryRepo`：CRUD 全链路；✅ 车型 **Update/Delete**（逻辑删除）已接 Service；⏳ 分页与参数校验） |
+| 4 | 第 4 步：数据库与迁移 | 进行中（✅ GORM、迁移 **`000001`～`000005`**（含 media_assets、system_settings 单行表、**param_templates + param_template_items**）；✅ `VehicleRepo`/`CategoryRepo`/`SystemRepo`/`MediaAssetRepo`/`ParamTemplateRepo`；✅ 车型 Update/Delete（逻辑删除）；⏳ 分页与参数校验） |
 | 4.5 | 第 4.5 步：对象存储（媒体上传） | ✅ 已完成（MinIO 客户端封装、Bootstrap 连接池、Bucket 自动创建、图片上传 Handler、前端直传适配） |
 | 5 | 第 5 步：认证闭环 | ✅ 已完成（JWT 双 Token + httpOnly Cookie + JWTAuth 中间件 + RequireRole 角色鉴权 + Refresh 续签 + Logout 清除 + 安全加固） |
 | 6 | 第 6～12 步 | 待开始 |
@@ -27,10 +27,10 @@
 | 2 | configs、logger、response、main 启动、中间件 | ✅ 已完成 |
 | 3 | bootstrap 抽取、路由分组（admin/public）、完整中间件链 | ✅ 已完成 |
 | 4 | domain 建模（enum、model、rule） | ✅ 已完成 |
-| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移至 **`000003`**、车型/分类读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD；✅ 车型 Update/逻辑 Delete；✅ **MediaAssetRepo**；⏳ 分页、事务） |
+| 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移至 **`000005`**、车型/分类/系统设置/参数模板读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD；✅ 车型 Update/逻辑 Delete；✅ MediaAssetRepo；✅ SystemRepo；✅ **ParamTemplateRepo**（含事务 Update）；⏳ 分页） |
 | 5.5 | 对象存储（MinIO/S3） | ✅ 已完成（客户端封装、连接池、Bucket 管理、图片上传 Handler、Docker MinIO 服务） |
 | 6 | 认证与权限（JWT、RBAC） | ✅ 已完成（双 Token + httpOnly Cookie + JWTAuth + RequireRole + Refresh + Logout + Validate 加固） |
-| 7 | 核心业务域（分类、车型、媒体等） | 进行中（✅ 分类 CRUD + 状态枚举 + parentName；✅ 上传 **MinIO + media_assets 落库**；✅ 车型 **List/Create/Update/Delete/Publish/Unpublish/Duplicate/Batch**；⏳ 认证后上传） |
+| 7 | 核心业务域（分类、车型、媒体、系统设置、参数模板等） | 进行中（✅ 分类 CRUD；✅ 上传 MinIO + media_assets 落库；✅ 车型 List/Create/Update/Delete/Publish/Unpublish/Duplicate/Batch；✅ 系统设置 Detail/Create/Update + 管理端页面；✅ **参数模板 Create/Update/Detail/AllDetail** + 管理端页面（一级分类绑定）；⏳ 参数模板 List/Delete 路由；⏳ 公开端联系配置/分享兜底） |
 | 8 | 缓存、性能、异常兜底 | 待开始 |
 | 9 | 测试与质量门禁 | 待开始 |
 | 10 | 部署与上线 | 待开始 |
@@ -41,27 +41,34 @@
 
 ```
 main ✅
-  └─ Bootstrap ✅ (cfg → Validate(JWT 密钥/长度/Secure) → logger → DB → Ping → OSS → router)
-       └─ Router ✅ (auth公开组 + admin受保护组 + public, health, 404/405)
+  └─ Bootstrap ✅ (cfg → Validate → logger → DB → Ping → OSS → buildHandlers → router)
+       │
+       ├─ buildHandlers() ✅  ← 组合根：集中装配 repo → service → handler
+       │    ├─ Repos:     NewUserRepo / NewCategoryRepo / NewVehicleRepo / NewSysSettings / NewMediaAssetRepo / NewParamTemplateRepo
+       │    ├─ Services:  auth.NewService / category.NewCategoryService / vehicle.NewService / system_setting.NewSysService / param_template.NewParamTemplateService
+       │    └─ Handlers:  NewAuth(svc) / NewUser() / NewVehicles(svc,svc,repo,oss) / NewCategories(svc) / NewSysSettings(svc,oss) / NewUpload(oss,repo) / NewParamTemplates(svc)
+       │
+       └─ Router ✅ (收 Handlers 结构体，不碰 *gorm.DB)
             ├─ Auth 路由组（公开）✅
-            │    ├─ POST /login   → Handler.Login → Service.Login(bcrypt) → 写双 Cookie
-            │    ├─ POST /refresh → Handler.Refresh → Service.RefreshToken → 写新 AT Cookie
-            │    ├─ POST /logout  → Handler.Logout → 清除双 Cookie
-            │    └─ GET  /me      → JWTAuth 中间件 → Handler.Me → repo.FindByID
+            │    ├─ POST /login   → handlers.Auth.Login → authSvc.Login(bcrypt) → 写双 Cookie
+            │    ├─ POST /refresh → handlers.Auth.Refresh → authSvc.RefreshToken → 写新 AT Cookie
+            │    ├─ POST /logout  → handlers.Auth.Logout → 清除双 Cookie
+            │    └─ GET  /me      → JWTAuth → handlers.Auth.Me → authSvc → repo.FindByID
             ├─ Admin 路由组（JWTAuth 中间件保护）✅
-            │    ├─ Handler（车型）✅ List/Create/Update/逻辑 Delete/Publish/Unpublish/Duplicate/Batch
-            │    │    └─ Service ✅ (GetById、UpdateVehicle、SoftDelete、Publish、Unpublish、Duplicate、BatchSetStatus、List、Create)
-            │    │         └─ Repository ✅ VehicleRepo：GetById / Update / List / Create
-            │    │              └─ *gorm.DB ✅
-            │    │    └─ MediaAssetRepo ✅ MapStorageKeysByIDs（列表拼 coverImageUrl）
-            │    ├─ Handler（分类）✅ List/Create/Update/Delete
-            │    │    └─ Service ✅ (CategoryRepo 接口 + CRUD)
-            │    │         └─ Repository ✅ CRUD 全链路
-            │    │              └─ *gorm.DB ✅
-            │    └─ Handler（上传）✅ POST /admin/upload/images（已受 JWT 保护）
-            │         ├─ oss.MinioClient ✅ PutObject
-            │         └─ *gorm.DB ✅ INSERT media_assets（返回 id / url / storageKey）
-            └─ Public 路由组（无认证）✅ GET /vehicles
+            │    ├─ handlers.Vehicles ✅ List/Create/Update/Delete/Publish/Unpublish/Duplicate/Batch
+            │    │    ├─ vehicleSvc → VehicleRepo → *gorm.DB
+            │    │    ├─ categorySvc → CategoryRepo → *gorm.DB（校验分类存在）
+            │    │    └─ mediaRepo → *gorm.DB（拼 coverImageUrl）
+            │    ├─ handlers.Categories ✅ List/Create/Update/Delete
+            │    │    └─ categorySvc → CategoryRepo → *gorm.DB
+            │    ├─ handlers.ParamTemplates ✅ Create/Update/Detail/AllDetail
+            │    │    └─ paramTemplateSvc → ParamTemplateRepo → *gorm.DB（含事务 Update）
+            │    ├─ handlers.System ✅ GET/POST/PUT /admin/system-settings
+            │    │    └─ sysSvc → SysRepo → *gorm.DB
+            │    └─ handlers.Upload ✅ POST /admin/upload/images
+            │         ├─ oss.MinioClient PutObject
+            │         └─ mediaRepo.Create → *gorm.DB
+            └─ Public 路由组（无认证）✅ GET /vehicles → handlers.Vehicles.List
 ```
 
 ### 待办 / 断裂点
@@ -74,8 +81,11 @@ main ✅
 | 4 | User 模块无 Service / Repository 层 | `handler/user.go`（仍为 stub） | ⏳ |
 | 5 | 上传接口未挂载认证中间件 | `router/router.go` | ✅ 已由 admin 组 JWTAuth 中间件覆盖 |
 | 6 | **media / OSS GC**（无引用对象清理） | 未实现 | ⏳ |
-| 7 | 种子数据——初始管理员账号 | `cmd/seed/main.go` 或迁移 `000004` | ⏳ |
+| 7 | 种子数据——初始管理员账号 | `cmd/seed/main.go` 或迁移 `000006` | ⏳ |
 | 8 | `.env` 需补全 JWT 密钥 ≥ 32 字符 | `.env` / `.env.dev` | ⏳ |
+| 9 | 公开端尚无系统设置/联系配置聚合接口 | `public/contact` 或 `public/home` 聚合 | ⏳ |
+| 10 | 参数模板 **List / Delete** 路由未注册 | `handler/param_template.go`、`router.go` | ⏳ |
+| 11 | `helper.RequiredField` 格式化 `%s` 缺参数 | `helper/utils.go` | ⏳ |
 
 ---
 
@@ -91,17 +101,20 @@ server/
 ├── cmd/migrate/        # 数据库迁移 CLI ✅（iofs）
 ├── configs/            # 配置 ✅
 ├── deploy/docker/      # 本地 PG/Redis/MinIO Compose ✅
-├── migrations/         # SQL 迁移 ✅（000001 / 000002 / 000003 media_assets）
-├── internal/bootstrap/ # 依赖装配 ✅
+├── migrations/         # SQL 迁移 ✅（000001～000005：init / categories / media_assets / system_settings / param_templates）
+├── internal/bootstrap/ # 依赖装配 ✅（组合根：buildHandlers 集中 repo→service→handler）
 ├── internal/infrastructure/postgres/ # Postgres 连接 ✅
 ├── internal/infrastructure/oss/     # MinIO/S3 客户端 ✅
 ├── internal/domain/    # 领域语义 ✅（enum / model / rule）
 ├── internal/service/vehicle/ # 业务服务 ✅（GetById、写接口、Publish、Unpublish、Duplicate、Batch）
-├── internal/repository/postgres/ # 数据仓储 ✅（VehicleRepo、MediaAssetRepo、CategoryRepo）
+├── internal/service/system_setting/ # 系统设置业务 ✅（Detail、Create、Update）
+├── internal/service/param_template/ # 参数模板业务 ✅（Create、Update、Detail、AllDetail）
+├── internal/repository/postgres/ # 数据仓储 ✅（VehicleRepo、MediaAssetRepo、CategoryRepo、SystemRepo、ParamTemplateRepo）
 ├── internal/service/auth/    # 认证业务 ✅（Login、RefreshToken、GetCurrentUser）
 ├── internal/transport/http/
-│   ├── router/         # 路由 ✅（auth 公开组 + admin JWTAuth 保护组 + public）
-│   ├── handler/        # 处理器 ✅（车型全量写读、上传写 media_assets、auth 四接口）
+│   ├── router/         # 路由 ✅（收 Handlers 结构体，不碰 DB；auth 公开组 + admin JWTAuth 保护组 + public）
+│   ├── handler/        # 处理器 ✅（只收 service/repo，不碰 *gorm.DB；车型、上传、auth、system-settings、param-templates）
+│   ├── helper/         # 工具函数 ✅（分页解析、排序校验、RequiredField 泛型校验）
 │   └── middleware/     # 中间件 ✅（JWTAuth、RequireRole、ValidateParams）
 ├── pkg/
 │   ├── jwt/            # JWT 工具 ✅（Claims、GenerateToken、ParseToken）
@@ -114,20 +127,73 @@ server/
 
 ## 五、下一步建议（对齐 [循序渐进总说明](../循序渐进总说明.md) 第 6 步及后续）
 
-1. **种子数据**：创建初始管理员账号（`cmd/seed/main.go` 或迁移 `000004_seed_admin_user.up.sql`），需 bcrypt 哈希密码。
-2. **`.env` 补全 JWT 密钥**：`VEHIVLE_JWT_SECRET` 和 `VEHIVLE_JWT_REFRESH_SECRET` ≥ 32 字符，否则启动报错（Validate 已校验）。
-3. **后端分页**：管理端车型列表改为 SQL `LIMIT/OFFSET` 或游标，与 admin 筛选对齐。
-4. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
-5. **domain / rule**：按产品收紧 `Publish` 的详情图/参数校验（当前 MVP 可放宽）。
-6. **（可选）** 优雅关闭时 `postgres.Close`；GORM SQL 日志接入统一 logger。
-7. **（可选）** 媒体 GC：无引用 `media_assets` + 对应 OSS 对象清理任务。
-8. **（V1.5）** Redis Token 黑名单（登出/踢人即时生效）。
+1. **参数模板补全**：补 `GET /admin/param-templates` 列表分页 + `DELETE /admin/param-templates/:id` 路由注册。
+2. **公开端系统设置**：补 `contact`/`home` 聚合读取，让小程序真正消费 `system_settings`（电话、微信、免责声明、默认分享图）。
+3. **`.env` 补全 JWT 密钥**：`VEHIVLE_JWT_SECRET` 和 `VEHIVLE_JWT_REFRESH_SECRET` ≥ 32 字符，否则启动报错（Validate 已校验）。
+4. **后端分页**：管理端车型列表改为 SQL `LIMIT/OFFSET` 或游标，与 admin 筛选对齐。
+5. **公开 vs 管理端**：`List` 已用路径区分 `onlyPublished`；后续可改为显式参数或两套 handler，避免隐式依赖 URL。
+6. **domain / rule**：按产品收紧 `Publish` 的详情图/参数校验（当前 MVP 可放宽）。
+7. **种子数据**：创建初始管理员账号（`cmd/seed/main.go` 或迁移 `000006_seed_admin_user.up.sql`），需 bcrypt 哈希密码。
+8. **（可选）** 优雅关闭时 `postgres.Close`；GORM SQL 日志接入统一 logger。
+9. **（可选）** 媒体 GC：无引用 `media_assets` + 对应 OSS 对象清理任务。
+10. **（V1.5）** Redis Token 黑名单（登出/踢人即时生效）。
 
 ---
 
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-04-13
+
+- **完成**：**参数模板全链路落地**——从迁移到路由一招贯穿，新模块接入组合根只加 3 行
+- **完成（迁移）**：新增 **`000005_create_param_templates_tables`**——`param_templates`（一级分类唯一绑定）+ `param_template_items`（字段定义：text/number/single_select）；联合唯一索引 `(template_id, field_key)`
+- **完成（领域）**：`model.ParamTemplate`（含 `Items []ParamTemplateItem` 一对多关联）；`model.ParamBody`（更新 DTO，可选指针）；`model.ParamTemplateItem`（`*int8` 的 required/display 避免 bool 零值陷阱）
+- **完成（枚举）**：`enum.ParamTemplateStatus`（int8 0/1） + `driver.Valuer` + `sql.Scanner`
+- **完成（仓储）**：`ParamTemplateRepo`——Create / **Update（事务三步：更主表→upsert 子项→删已移除项）** / Delete / Detail / AllDetail(`Preload`) / Count
+- **完成（服务）**：`ParamTemplateService`——Create / Update（先查存在性） / Detail / AllDetail
+- **完成（接口）**：`POST/PUT/GET /admin/param-templates`（Create / Update / Detail / AllDetail）
+- **完成（DI 接入）**：`buildHandlers()` 新增 `plateTemRepo → plateTemSvc → handler.NewParamTemplates(svc)`；`Handlers` 结构体新增 `ParamTemplates`
+- **完成（helper）**：新增 `RequiredField[T ~string]` 泛型必填校验函数
+- **完成（路由优化）**：404/405 错误信息中文化（含路径/方法提示）；注释清理
+- **完成（管理端）**：参数模板页分类下拉仅显示一级分类（`level: 1`），label 改为"所属一级分类"
+- **学习**：GORM 一对多 `Preload("Items")` 字段名 ≠ 列名；`Save()` 的 upsert 行为（有 PK 更新，无 PK 插入）
+- **学习**：Go 泛型 `[T ~string]`——`~` 表示底层类型约束
+- **学习**：事务内「更新 → upsert 子集 → 清理」模式适用于所有一对多编辑场景
+- **文档**：新增 [lesson-20260413.md](./lesson-20260413.md)；更新 [README.md](./README.md)、[progress.md](./progress.md)
+- **明日第一件事**：跑 `000005` 迁移 + 全流程联调参数模板 CRUD（含子项增删改）
+
+### 2026-04-12
+
+- **完成**：**依赖注入重构（组合根模式）**——把 repo→service→handler 的组装从 router/handler 搬到 `bootstrap.buildHandlers()`
+- **完成（bootstrap）**：新增 `buildHandlers()` 方法，集中创建所有 repo、service、handler，返回 `router.Handlers` 结构体
+- **完成（router）**：新增 `Handlers` 结构体聚合全部 handler；`Router` 去掉 `db *gorm.DB` 字段；构造函数 `New()` 不再需要 `db`；路由注册改为 `r.handlers.Xxx.Method`
+- **完成（handler/auth）**：`NewAuth(db, jwtCfg)` → `NewAuth(authSvc, jwtCfg)`；去掉 `import postgres`、`import gorm`
+- **完成（handler/user）**：`User { DB *gorm.DB }` → `User {}`；`NewUser(db)` → `NewUser()`（仍为 stub）
+- **完成（handler/categories）**：`Categories { DB, CategoryService }` → `Categories { CategoryService }`；`NewCategories(db)` → `NewCategories(catSvc)`
+- **完成（handler/vehicles）**：`NewVehicles(db, oss)` → `NewVehicles(vehSvc, catSvc, mediaRepo, oss)`
+- **完成（handler/system）**：`NewSysSettings(db, oss)` → `NewSysSettings(sysSvc, oss)`；去掉 `DB` 字段
+- **完成（handler/upload）**：`Upload { OSS, DB }` → `Upload { OSS, mediaRepo }`；`u.DB.WithContext(ctx).Create(row)` → `u.mediaRepo.Create(ctx, row)`
+- **学习**：组合根（Composition Root）——应用中「唯一知道所有具体实现」的地方；Go 的依赖注入靠构造函数传参，简单、显式、零魔法
+- **学习**：`*gorm.DB` 只应出现在 bootstrap（创建连接）和 repository（执行查询）两层，中间层不碰
+- **学习**：Handler 结构体字段应「诚实」——没用到的依赖不挂（如 `Categories.DB` 从未被方法调用）
+- **文档**：新增 [lesson-20260412.md](./lesson-20260412.md)（含完整调用链路图、前后端 DI 对照表）；更新 [README.md](./README.md)、[progress.md](./progress.md)
+- **明日第一件事**：启动服务跑一遍 CRUD 接口确认行为不变（功能回归）
+
+### 2026-04-11
+
+- **完成**：**系统设置单行表落地**——`system_settings` 从旧 key-value/JSONB 结构重构为**单行配置表**
+- **完成（迁移）**：新增 **`000004_alter_system_settings`**，字段固定为 `company_name`、客服电话/微信、`default_price_mode`、免责声明、默认分享标题/图；`id = 1` + `CHECK` 保证全局仅一行
+- **完成（领域）**：新增 `model.SystemSetting`，必填字段用值类型、可空字段用 `*string`
+- **完成（仓储）**：新增 `SystemRepo`：`Detail` / `Create` / `Update` / `Exists`，写操作固定作用于 `id = 1`
+- **完成（服务）**：新增 `system_setting.SysService`，收口“首次创建、后续更新”的业务规则：已存在不可重复创建，不存在不可更新
+- **完成（接口）**：新增 **`GET/POST/PUT /api/v1/admin/system-settings`**；详情无数据时返回 `data: null`
+- **完成（响应适配）**：系统设置响应补充 `defaultShareImageUrl`，由 `storage_key` 通过 OSS 客户端拼接预览 URL
+- **完成（管理端）**：新增系统设置页；支持公司名称、客服电话、客服微信、默认价格模式、免责声明、默认分享标题/图编辑
+- **完成（映射）**：管理端 `defaultPriceMode` 做前后端枚举转换：`msrp ↔ show_price`、`negotiable ↔ phone_inquiry`
+- **学习**：单行表比 key-value 更适合“全局唯一配置对象”；`NULL` 与空字符串不是同一语义；`storage_key`（存储层）与 `public URL`（展示层）应分离
+- **文档**：新增 [lesson-20260411.md](./lesson-20260411.md)；更新 [README.md](./README.md)、[progress.md](./progress.md) 索引与全链路
+- **明日第一件事**：补公开端 `system_settings` / `contact` 聚合读取接口，打通小程序联系方式、免责声明、默认分享图兜底
 
 ### 2026-04-10
 
@@ -284,4 +350,4 @@ server/
 
 ---
 
-*最后更新：2026-04-10（JWT 认证闭环——双 Token + httpOnly Cookie + 角色鉴权 + 安全加固；lesson-20260410 / README / progress 同步）*
+*最后更新：2026-04-13（参数模板全链路——000005 迁移 + model + repo(事务) + service + handler + 组合根接入；lesson-20260413 / README / progress 同步）*

@@ -21,6 +21,8 @@
 - **`000001_init_schema`**：`admin_users`、`vehicles`、`system_settings`
 - **`000002_add_categories_table`**：`categories`，并与 `vehicles.category_id` 外键对齐
 - **`000003_create_media_assets_table`**：`media_assets`（上传落库元数据，`storage_key` 唯一）
+- **`000004_alter_system_settings`**：重建 `system_settings` 为单行全局配置列
+- **`000005_create_param_templates_tables`**：`param_templates`、`param_template_items`（一级分类绑定模板，见 `doc/tech.md` 2.1）
 
 其余规划表在后续迁移中按序追加（**不要**修改已发布环境执行过的旧 `.sql`）。
 

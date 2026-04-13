@@ -11,11 +11,18 @@ import (
 
 	"vehivle/configs"
 	"vehivle/internal/infrastructure/oss"
+	pginfra "vehivle/internal/infrastructure/postgres"
+	pgrepo "vehivle/internal/repository/postgres"
+	"vehivle/internal/service/auth"
+	"vehivle/internal/service/category"
+	"vehivle/internal/service/param_template"
+	"vehivle/internal/service/system_setting"
+	"vehivle/internal/service/vehicle"
+	"vehivle/internal/transport/http/handler"
 	"vehivle/internal/transport/http/router"
 	"vehivle/pkg/logger"
 
 	"gorm.io/gorm"
-	"vehivle/internal/infrastructure/postgres"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -55,12 +62,10 @@ func (b *Bootstrap) Run() (*gin.Engine, error) {
 	r.Use(gin.Recovery())
 	r.Use(logger.RequestID())
 	r.Use(logger.AccessLog(b.logger))
-	// 打开数据库连接
 	if err := b.pgsqlConnPool(); err != nil {
 		return nil, err
 	}
-	// 检查数据库连接
-	if err := postgres.Ping(context.Background(), b.db, false); err != nil {
+	if err := pginfra.Ping(context.Background(), b.db, false); err != nil {
 		return nil, err
 	}
 	// 对象存储：MinIO/S3 为强依赖，启动时必须连通并确保 Bucket 存在
@@ -76,8 +81,43 @@ func (b *Bootstrap) Run() (*gin.Engine, error) {
 	return r, nil
 }
 
+// buildHandlers 构建 handlers 集合
+func (b *Bootstrap) buildHandlers() *router.Handlers {
+	// repos
+	userRepo := pgrepo.NewUserRepo(b.db)
+	catRepo := pgrepo.NewCategoryRepo(b.db)
+	vehRepo := pgrepo.NewVehicleRepo(b.db)
+	sysRepo := pgrepo.NewSysSettings(b.db)
+	mediaRepo := pgrepo.NewMediaAssetRepo(b.db)
+	plateTemRepo := pgrepo.NewParamTemplateRepo(b.db)
+
+	// services
+	authSvc := auth.NewService(userRepo, auth.JWTConfig{
+		Secret:             b.cfg.JWT.Secret,
+		RefreshSecret:      b.cfg.JWT.RefreshSecret,
+		ExpireHours:        b.cfg.JWT.ExpireHours,
+		RefreshExpireHours: b.cfg.JWT.RefreshExpireHours,
+	})
+	catSvc := category.NewCategoryService(catRepo)
+	vehSvc := vehicle.NewService(vehRepo)
+	sysSvc := system_setting.NewSysService(sysRepo)
+	plateTemSvc := param_template.NewParamTemplateService(plateTemRepo)
+
+	// handlers
+	return &router.Handlers{
+		Auth:           handler.NewAuth(authSvc, b.cfg.JWT),
+		User:           handler.NewUser(),
+		Vehicles:       handler.NewVehicles(vehSvc, catSvc, mediaRepo, b.ossClient),
+		Categories:     handler.NewCategories(catSvc),
+		System:         handler.NewSysSettings(sysSvc, b.ossClient),
+		Upload:         handler.NewUpload(b.ossClient, mediaRepo),
+		ParamTemplates: handler.NewParamTemplates(plateTemSvc),
+	}
+}
+
 func (b *Bootstrap) injectRouter(gin *gin.Engine) error {
-	if err := router.New(gin, b.logger, b.db, b.ossClient, b.cfg.JWT).Register(); err != nil {
+	h := b.buildHandlers()
+	if err := router.New(gin, b.logger, b.ossClient, b.cfg.JWT, h).Register(); err != nil {
 		b.logger.Error(context.Background(), "注册路由失败", slog.String("error", err.Error()))
 		return fmt.Errorf("注册路由失败: %w", err)
 	}
@@ -86,7 +126,7 @@ func (b *Bootstrap) injectRouter(gin *gin.Engine) error {
 
 // pgsqlConnPool 初始化 PostgreSQL 连接池
 func (b *Bootstrap) pgsqlConnPool() error {
-	db, err := postgres.Open(&b.cfg.Database, b.logger)
+	db, err := pginfra.Open(&b.cfg.Database, b.logger)
 	if err != nil {
 		return fmt.Errorf("打开数据库失败: %w", err)
 	}
@@ -173,4 +213,3 @@ func applyOssPublicReadPolicy(ctx context.Context, client *minio.Client, bucket 
 	)
 	return client.SetBucketPolicy(ctx, bucket, policy)
 }
-

@@ -21,15 +21,11 @@ import (
 )
 
 const (
-	// 管理端车型列表默认页码
-	defaultVehicleListPage = 1
-	// 管理端车型列表默认每页条数
+	defaultVehicleListPage     = 1
 	defaultVehicleListPageSize = 10
-	// 管理端车型列表最大每页条数
-	maxVehicleListPageSize = 100
+	maxVehicleListPageSize     = 100
 )
 
-// Vehicles 车型处理器
 type Vehicles struct {
 	OSS             oss.MinioClient
 	VehicleService  *vehicle.Service
@@ -37,15 +33,12 @@ type Vehicles struct {
 	mediaRepo       *postgres.MediaAssetRepo
 }
 
-// NewVehicles 创建车型处理器（OSS 用于拼接封面公网 URL；分类服务用于列表回填与写入校验）。
-func NewVehicles(db *gorm.DB, ossClient oss.MinioClient) *Vehicles {
-	repo := postgres.NewVehicleRepo(db)
-	catRepo := postgres.NewCategoryRepo(db)
+func NewVehicles(vehSvc *vehicle.Service, catSvc *category.CategoryService, mediaRepo *postgres.MediaAssetRepo, ossClient oss.MinioClient) *Vehicles {
 	return &Vehicles{
 		OSS:             ossClient,
-		VehicleService:  vehicle.NewService(repo),
-		CategoryService: category.NewCategoryService(catRepo),
-		mediaRepo:       postgres.NewMediaAssetRepo(db),
+		VehicleService:  vehSvc,
+		CategoryService: catSvc,
+		mediaRepo:       mediaRepo,
 	}
 }
 

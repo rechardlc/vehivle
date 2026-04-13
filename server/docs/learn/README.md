@@ -29,5 +29,8 @@
 | [lesson-20260408.md](./lesson-20260408.md) | MinIO/S3 对象存储集成（客户端封装、Bootstrap 连接池、Bucket 自动创建）；图片上传 Handler（MIME 白名单、`PutObject`、`defer`）；`injectRouter` 错误处理改进；统一响应 `RequestID` 补全；Docker Compose 扩展 MinIO；前端直传适配 |
 | [lesson-20260409.md](./lesson-20260409.md) | **`media_assets` 迁移与语义**；上传后写库、返回 `id`/`url`/`storageKey`；`coverImageUrl` 拼接；`VehicleService` 写接口与批量/发布/下架/复制；路由补全；前端 `coverMediaId` = 媒体 UUID |
 | [lesson-20260410.md](./lesson-20260410.md) | **JWT 认证闭环**——双 Token + httpOnly Cookie + 角色鉴权；链路审计 8 项偏离修复（`json:"-"`、统一错误、`SameSite=Lax`、Refresh 实现、RT MaxAge 独立、Validate 密钥校验、RequireRole、CookieSecure） |
+| [lesson-20260411.md](./lesson-20260411.md) | **`system_settings` 单行表重构**；`000004` 迁移、Repository/Service/Handler 链路；`/admin/system-settings` 读写接口；管理端系统设置页与价格模式映射 |
+| [lesson-20260412.md](./lesson-20260412.md) | **依赖注入重构**；组合根模式；`buildHandlers()` 集中装配 repo→service→handler；handler/router 去掉 `*gorm.DB`；完整调用链路图 |
+| [lesson-20260413.md](./lesson-20260413.md) | **参数模板全链路**；`000005` 迁移（param_templates + param_template_items）；GORM 一对多 Preload；事务三步 Update；泛型校验 `RequiredField[T ~string]`；组合根新模块接入 |
 
-建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`。
+建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`（最新：`2026-04-13` 参数模板全链路）。

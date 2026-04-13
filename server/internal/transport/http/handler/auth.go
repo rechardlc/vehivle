@@ -4,13 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"vehivle/configs"
-	"vehivle/internal/repository/postgres"
 	"vehivle/internal/service/auth"
 	"vehivle/pkg/jwt"
 	"vehivle/pkg/response"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 const (
@@ -25,15 +23,7 @@ type Auth struct {
 	jwtCfg      configs.JWTConfig
 }
 
-// NewAuth 组装登录依赖：用户仓储 + JWT 配置。
-func NewAuth(db *gorm.DB, jwtCfg configs.JWTConfig) *Auth {
-	repo := postgres.NewUserRepo(db)
-	svc := auth.NewService(repo, auth.JWTConfig{
-		Secret:             jwtCfg.Secret,
-		RefreshSecret:      jwtCfg.RefreshSecret,
-		ExpireHours:        jwtCfg.ExpireHours,
-		RefreshExpireHours: jwtCfg.RefreshExpireHours,
-	})
+func NewAuth(svc *auth.Service, jwtCfg configs.JWTConfig) *Auth {
 	return &Auth{authService: svc, jwtCfg: jwtCfg}
 }
 

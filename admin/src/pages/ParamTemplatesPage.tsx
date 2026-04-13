@@ -47,9 +47,10 @@ export function ParamTemplatesPage() {
     queryFn: paramTemplatesApi.list
   });
 
+  /** 模板只绑定一级分类（PRD：按一级大类维护参数项；二级为品牌/筛选用） */
   const categoriesQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => categoriesApi.list()
+    queryKey: ["categories", "level1"],
+    queryFn: () => categoriesApi.list({ level: 1, pageSize: 0 })
   });
 
   const createMutation = useMutation({
@@ -82,7 +83,10 @@ export function ParamTemplatesPage() {
   });
 
   const categoryOptions = useMemo(
-    () => (categoriesQuery.data?.list ?? []).map((item) => ({ label: item.name, value: item.id })),
+    () =>
+      (categoriesQuery.data?.list ?? [])
+        .filter((c) => c.level === 1)
+        .map((item) => ({ label: item.name, value: item.id })),
     [categoriesQuery.data]
   );
 
@@ -205,8 +209,12 @@ export function ParamTemplatesPage() {
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="categoryId" label="所属分类" rules={[{ required: true, message: "请选择所属分类" }]}>
-                <Select placeholder="请选择所属分类" options={categoryOptions} />
+              <Form.Item
+                name="categoryId"
+                label="所属一级分类"
+                rules={[{ required: true, message: "请选择所属一级分类" }]}
+              >
+                <Select placeholder="请选择一级分类（车型大类）" options={categoryOptions} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>

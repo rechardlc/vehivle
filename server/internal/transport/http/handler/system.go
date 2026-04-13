@@ -9,23 +9,19 @@ import (
 
 	"vehivle/internal/domain/model"
 	"vehivle/internal/infrastructure/oss"
-	"vehivle/internal/repository/postgres"
 	"vehivle/internal/service/system_setting"
 	"vehivle/pkg/response"
 )
 
 type System struct {
-	DB         *gorm.DB
 	OSS        oss.MinioClient
 	SysService *system_setting.SysService
 }
 
-func NewSysSettings(db *gorm.DB, ossClient oss.MinioClient) *System {
-	repo := postgres.NewSysSettings(db)
+func NewSysSettings(svc *system_setting.SysService, ossClient oss.MinioClient) *System {
 	return &System{
-		DB:         db,
 		OSS:        ossClient,
-		SysService: system_setting.NewSysService(repo),
+		SysService: svc,
 	}
 }
 

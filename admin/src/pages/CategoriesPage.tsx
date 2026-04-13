@@ -127,11 +127,12 @@ export function CategoriesPage() {
     queryFn: () => categoriesApi.list(listParams)
   });
 
-  /** 父级下拉：一级分类全量（pageSize=0 不分页）；与主列表分页无关 */
+  /** 父级下拉：一级分类全量（pageSize=0 不分页）；仅弹窗打开时才请求 */
   const level1ForParentQuery = useQuery({
     queryKey: ["categories", "level1-parent-options"],
     queryFn: () =>
-      categoriesApi.list({ level: 1, page: DEFAULT_CATEGORY_LIST_PAGE, pageSize: 0 })
+      categoriesApi.list({ level: 1, page: DEFAULT_CATEGORY_LIST_PAGE, pageSize: 0 }),
+    enabled: open
   });
 
   const createMutation = useMutation({

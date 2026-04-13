@@ -8,12 +8,12 @@ import (
 
 	"vehivle/internal/domain/model"
 	"vehivle/internal/infrastructure/oss"
+	"vehivle/internal/repository/postgres"
 	"vehivle/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
-	"gorm.io/gorm"
 )
 
 const maxImageUploadSize int64 = 10 << 20 // 10MB
@@ -28,15 +28,13 @@ var allowedImageTypes = map[string]bool{
 	"image/webp": true,
 }
 
-// Upload 图片上传处理器：写入 OSS 后落库 media_assets，返回媒体 id 与可访问 URL。
 type Upload struct {
-	OSS oss.MinioClient
-	DB  *gorm.DB
+	OSS       oss.MinioClient
+	mediaRepo *postgres.MediaAssetRepo
 }
 
-// NewUpload 创建图片上传处理器
-func NewUpload(ossClient oss.MinioClient, db *gorm.DB) *Upload {
-	return &Upload{OSS: ossClient, DB: db}
+func NewUpload(ossClient oss.MinioClient, mediaRepo *postgres.MediaAssetRepo) *Upload {
+	return &Upload{OSS: ossClient, mediaRepo: mediaRepo}
 }
 
 // UploadImages 处理单张图片上传，校验类型与大小后存入 OSS，并写入 media_assets。
@@ -86,7 +84,7 @@ func (u *Upload) UploadImages(c *gin.Context) {
 		FileSize:   header.Size,
 		AssetType:  mediaAssetTypeImage,
 	}
-	if err := u.DB.WithContext(c.Request.Context()).Create(row).Error; err != nil {
+	if err := u.mediaRepo.Create(c.Request.Context(), row); err != nil {
 		msg := "媒体元数据保存失败，请稍后重试"
 		if strings.Contains(err.Error(), "does not exist") {
 			msg = "数据库未创建 media_assets 表：在 server 目录执行 go run ./cmd/migrate -op up 后再试"

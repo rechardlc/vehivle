@@ -4,19 +4,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 
 	"vehivle/pkg/response"
 )
 
-// User 用户处理器
-type User struct {
-	DB *gorm.DB
-}
+type User struct{}
 
-// NewUser 创建用户处理器
-func NewUser(db *gorm.DB) *User {
-	return &User{DB: db}
+func NewUser() *User {
+	return &User{}
 }
 
 // Get 获取用户信息

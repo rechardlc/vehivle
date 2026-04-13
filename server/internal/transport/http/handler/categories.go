@@ -5,7 +5,6 @@ import (
 	"strings"
 	"vehivle/internal/domain/enum"
 	"vehivle/internal/domain/model"
-	"vehivle/internal/repository/postgres"
 	"vehivle/internal/service/category"
 	"vehivle/internal/transport/http/helper"
 	"vehivle/pkg/response"
@@ -16,30 +15,17 @@ import (
 )
 
 const (
-	// 默认分页页码
-	DEFAULT_CATEGORY_LIST_PAGE = 1
-	// 默认分页大小
+	DEFAULT_CATEGORY_LIST_PAGE      = 1
 	DEFAULT_CATEGORY_LIST_PAGE_SIZE = 10
-	// 最大分页大小
-	MAX_CATEGORY_LIST_PAGE_SIZE = 100
+	MAX_CATEGORY_LIST_PAGE_SIZE     = 100
 )
 
 type Categories struct {
-	DB              *gorm.DB                  // 数据库连接
-	CategoryService *category.CategoryService // 分类服务
+	CategoryService *category.CategoryService
 }
 
-/**
- * 创建分类处理器
- */
-func NewCategories(db *gorm.DB) *Categories {
-	// 创建分类仓库实例
-	repo := postgres.NewCategoryRepo(db)
-	// 创建分类服务实例
-	return &Categories{
-		DB:              db,
-		CategoryService: category.NewCategoryService(repo),
-	}
+func NewCategories(svc *category.CategoryService) *Categories {
+	return &Categories{CategoryService: svc}
 }
 
 // validateResolvedCategory 校验「已确定」的分类字段：状态、名称、排序、层级、二级父级。
