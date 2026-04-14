@@ -7,6 +7,7 @@ import (
 
 type PublishRequirements struct {
 	HasCoverImage     bool
+	CategoryEnabled   bool
 	HasDetailImages   bool
 	HasRequiredParams bool
 }
@@ -21,6 +22,9 @@ func CanPublishVehicle(v *model.Vehicle, requirements *PublishRequirements) (ok 
 	if v.CategoryID == nil || *v.CategoryID == "" {
 		errs = append(errs, "一级分类必填")
 	}
+	if !requirements.CategoryEnabled {
+		errs = append(errs, "分类未启用或不存在")
+	}
 	if !requirements.HasCoverImage {
 		errs = append(errs, "封面图必填")
 	}
@@ -28,7 +32,7 @@ func CanPublishVehicle(v *model.Vehicle, requirements *PublishRequirements) (ok 
 		errs = append(errs, "详情图集必填")
 	}
 	if !requirements.HasRequiredParams {
-		errs = append(errs, "必填参数项未填写完整")
+		errs = append(errs, "参数模板未启用或必填参数项未填写完整")
 	}
 	return len(errs) == 0, errs
 }

@@ -6,15 +6,14 @@ import (
 	"vehivle/internal/domain/enum"
 	"vehivle/internal/domain/model"
 	"vehivle/internal/service/category"
-	"vehivle/internal/transport/http/helper"
 	"vehivle/internal/transport/http/constant"
+	"vehivle/internal/transport/http/helper"
 	"vehivle/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
-
 
 type Categories struct {
 	CategoryService *category.CategoryService
@@ -82,7 +81,6 @@ func (c *Categories) List(ctx *gin.Context) {
 		return
 	}
 
-
 	// 如果page小于1，则设置为1
 	page := raw.Page
 	if page <= 0 {
@@ -102,7 +100,7 @@ func (c *Categories) List(ctx *gin.Context) {
 		Keyword:   strings.TrimSpace(raw.Keyword),
 		Level:     raw.Level,
 		Page:      page,
-		PageSize:  raw.PageSize,
+		PageSize:  pageSize,
 		SortField: sf,
 		SortOrder: so,
 	}

@@ -32,8 +32,9 @@ import { categoriesApi } from "../api/categories";
 import type { VehicleListQuery } from "../api/vehicles";
 import { vehiclesApi } from "../api/vehicles";
 import { ImageUploader } from "../components/ImageUploader";
+import { MultiImageUploader } from "../components/MultiImageUploader";
 import { PageCard } from "../components/PageCard";
-import type { PriceMode, Vehicle, VehicleListItem, VehicleStatus } from "../types";
+import type { PriceMode, Vehicle, VehicleDetailImage, VehicleListItem, VehicleStatus } from "../types";
 
 /** 车型列表默认分页（改此处即可调整首屏条数与起始页） */
 const DEFAULT_VEHICLE_LIST_PAGE = 1;
@@ -49,6 +50,7 @@ interface FilterState {
 
 type VehicleFormValue = Pick<Vehicle, "name" | "categoryId" | "coverMediaId" | "msrpPrice" | "sellingPoints" | "sortOrder"> & {
   priceMode: PriceMode;
+  detailImages: VehicleDetailImage[];
 };
 
 const statusOptions: Array<{ label: string; value: VehicleStatus }> = [
@@ -89,6 +91,7 @@ export function VehiclesPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<VehicleListItem | null>(null);
+  const [detailImagesLoading, setDetailImagesLoading] = useState(false);
 
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const [tableScrollY, setTableScrollY] = useState<number | undefined>(undefined);
@@ -170,7 +173,8 @@ export function VehiclesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<Vehicle> }) => vehiclesApi.update(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Vehicle> & { detailImages?: VehicleDetailImage[] } }) =>
+      vehiclesApi.update(id, payload),
     onSuccess: () => {
       message.success("车型更新成功");
       refreshCoreQueries();
@@ -240,8 +244,21 @@ export function VehiclesPage() {
       msrpPrice: record.msrpPrice,
       priceMode: record.priceMode,
       sellingPoints: record.sellingPoints,
-      sortOrder: record.sortOrder
+      sortOrder: record.sortOrder,
+      detailImages: []
     });
+  }
+
+  async function loadDetailImages(record: VehicleListItem) {
+    setDetailImagesLoading(true);
+    try {
+      const detailImages = await vehiclesApi.detailImages(record.id);
+      form.setFieldValue("detailImages", detailImages);
+    } catch (error) {
+      message.error((error as Error).message || "详情图加载失败");
+    } finally {
+      setDetailImagesLoading(false);
+    }
   }
 
   function onCreate() {
@@ -254,7 +271,8 @@ export function VehiclesPage() {
       msrpPrice: 0,
       priceMode: "msrp",
       sellingPoints: "",
-      sortOrder: 1
+      sortOrder: 1,
+      detailImages: []
     });
   }
 
@@ -263,6 +281,7 @@ export function VehiclesPage() {
     setEditing(record);
     setModalOpen(true);
     populateVehicleForm(record);
+    void loadDetailImages(record);
   }
 
   /** 已发布 / 已删除：仅查看 */
@@ -270,6 +289,7 @@ export function VehiclesPage() {
     setEditing(record);
     setModalOpen(true);
     populateVehicleForm(record);
+    void loadDetailImages(record);
   }
 
   function submitForm(values: VehicleFormValue) {
@@ -519,7 +539,7 @@ export function VehiclesPage() {
           okText={isModalReadOnly ? "关闭" : "确定"}
           cancelButtonProps={{ style: { display: isModalReadOnly ? "none" : undefined } }}
           width={720}
-          confirmLoading={!isModalReadOnly && (createMutation.isPending || updateMutation.isPending)}
+          confirmLoading={!isModalReadOnly && (createMutation.isPending || updateMutation.isPending || detailImagesLoading)}
           destroyOnHidden
         >
           <Form<VehicleFormValue> form={form} layout="vertical" disabled={isModalReadOnly} onFinish={submitForm}>
@@ -557,6 +577,24 @@ export function VehiclesPage() {
                     placeholder="请上传车型封面图"
                     previewFromServer={editing?.coverImageUrl}
                   />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item
+                  name="detailImages"
+                  label="详情图集"
+                  extra="用于详情页轮播，最多 9 张；单张建议不超过 2MB，拖拽图片可调整顺序。"
+                  rules={[
+                    {
+                      validator: async (_, value: VehicleDetailImage[] | undefined) => {
+                        if (value !== undefined && value.length > 9) {
+                          throw new Error("详情图最多上传 9 张");
+                        }
+                      }
+                    }
+                  ]}
+                >
+                  <MultiImageUploader readOnly={isModalReadOnly || detailImagesLoading} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>

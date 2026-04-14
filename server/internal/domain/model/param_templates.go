@@ -18,22 +18,11 @@ type ParamTemplate struct {
 	// 参数项：一对多关系，由 handler/service 组装（handler 传入，service 关联创建）。_ 表示不映射到数据库。
 	Items []ParamTemplateItem `json:"items" gorm:"foreignKey:TemplateID;constraint:OnDelete:CASCADE"`
 	// 状态
-	Status enum.ParamTemplateStatus `json:"status" binding:"required" gorm:"column:status;not null"`
+	Status *enum.ParamTemplateStatus `json:"status" binding:"required" gorm:"column:status;not null"`
 	// 创建时间
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 	// 更新时间
 	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
-}
-
-type PamListTmp struct {
-	ParamTemplate
-	ItemNum int `json:"itemNum"`
-}
-
-// 查询参数
-type TmpQuery struct {
-	Page     int `form:"page"`
-	PageSize int `form:"pageSize"`
 }
 
 func (*ParamTemplate) TableName() string {

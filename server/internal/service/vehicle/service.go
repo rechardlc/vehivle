@@ -22,6 +22,12 @@ type VehicleRepo interface {
 	ListByQuery(ctx context.Context, q model.VehicleListQuery) ([]*model.Vehicle, error)
 	CountByQuery(ctx context.Context, q model.VehicleListQuery) (int64, error)
 	Create(ctx context.Context, vehicle *model.Vehicle) (*model.Vehicle, error)
+	HasDetailImages(ctx context.Context, id string) (bool, error)
+	RequiredParamsComplete(ctx context.Context, vehicleID string, categoryID string) (bool, error)
+	ListDetailMediaIDs(ctx context.Context, vehicleID string) ([]string, error)
+	ListDetailMedia(ctx context.Context, vehicleID string) ([]model.VehicleDetailMedia, error)
+	ReplaceDetailMedia(ctx context.Context, vehicleID string, mediaIDs []string) error
+	ListPublicParams(ctx context.Context, vehicleID string, categoryID string) ([]model.VehicleParamDisplay, error)
 }
 
 // Service 定义了车辆服务
@@ -192,6 +198,58 @@ func (s *Service) Publish(ctx context.Context, id string, req rule.PublishRequir
 	// 发布车型
 	v.Publish()
 	return s.vehicles.Update(ctx, v)
+}
+
+func (s *Service) BuildPublishRequirements(ctx context.Context, v *model.Vehicle, categoryEnabled bool) (rule.PublishRequirements, error) {
+	req := rule.PublishRequirements{
+		HasCoverImage:     v.CoverMediaID != "",
+		CategoryEnabled:   categoryEnabled,
+		HasDetailImages:   false,
+		HasRequiredParams: false,
+	}
+	hasDetailImages, err := s.vehicles.HasDetailImages(ctx, v.ID)
+	if err != nil {
+		return req, fmt.Errorf("检查详情图失败: %w", err)
+	}
+	req.HasDetailImages = hasDetailImages
+	if v.CategoryID == nil || *v.CategoryID == "" {
+		return req, nil
+	}
+	paramsComplete, err := s.vehicles.RequiredParamsComplete(ctx, v.ID, *v.CategoryID)
+	if err != nil {
+		return req, fmt.Errorf("检查必填参数失败: %w", err)
+	}
+	req.HasRequiredParams = paramsComplete
+	return req, nil
+}
+
+func (s *Service) ListDetailMediaIDs(ctx context.Context, vehicleID string) ([]string, error) {
+	return s.vehicles.ListDetailMediaIDs(ctx, vehicleID)
+}
+
+func (s *Service) ListDetailMedia(ctx context.Context, vehicleID string) ([]model.VehicleDetailMedia, error) {
+	return s.vehicles.ListDetailMedia(ctx, vehicleID)
+}
+
+func (s *Service) ReplaceDetailMedia(ctx context.Context, vehicleID string, mediaIDs []string) error {
+	if len(mediaIDs) > 9 {
+		return fmt.Errorf("详情图最多上传 9 张")
+	}
+	seen := make(map[string]struct{}, len(mediaIDs))
+	for _, mediaID := range mediaIDs {
+		if strings.TrimSpace(mediaID) == "" {
+			return fmt.Errorf("详情图 mediaId 不能为空")
+		}
+		if _, ok := seen[mediaID]; ok {
+			return fmt.Errorf("详情图不能重复")
+		}
+		seen[mediaID] = struct{}{}
+	}
+	return s.vehicles.ReplaceDetailMedia(ctx, vehicleID, mediaIDs)
+}
+
+func (s *Service) ListPublicParams(ctx context.Context, vehicleID string, categoryID string) ([]model.VehicleParamDisplay, error) {
+	return s.vehicles.ListPublicParams(ctx, vehicleID, categoryID)
 }
 
 // Unpublish 下架车辆（仅已发布可下架）。

@@ -1,4 +1,4 @@
-import type { PagedResult, PriceMode, Vehicle, VehicleListItem, VehicleStatus } from "../types";
+import type { PagedResult, PriceMode, Vehicle, VehicleDetailImage, VehicleListItem, VehicleStatus } from "../types";
 import { http, requestData } from "./client";
 
 export interface VehicleListQuery {
@@ -80,7 +80,9 @@ export const vehiclesApi = {
   },
 
   async create(
-    payload: Pick<Vehicle, "name" | "categoryId" | "coverMediaId" | "priceMode" | "msrpPrice" | "sellingPoints" | "sortOrder">
+    payload: Pick<Vehicle, "name" | "categoryId" | "coverMediaId" | "priceMode" | "msrpPrice" | "sellingPoints" | "sortOrder"> & {
+      detailImages?: VehicleDetailImage[];
+    }
   ): Promise<VehicleListItem> {
     const body = {
       name: payload.name,
@@ -92,10 +94,13 @@ export const vehiclesApi = {
       sortOrder: payload.sortOrder
     };
     const raw = await requestData<Vehicle>(http.post("/admin/vehicles", body));
+    if (payload.detailImages !== undefined) {
+      await vehiclesApi.saveDetailImages(raw.id, payload.detailImages);
+    }
     return mapToListItem(raw);
   },
 
-  async update(id: string, payload: Partial<Vehicle>): Promise<VehicleListItem> {
+  async update(id: string, payload: Partial<Vehicle> & { detailImages?: VehicleDetailImage[] }): Promise<VehicleListItem> {
     const body: Record<string, unknown> = {};
     if (payload.name !== undefined) body.name = payload.name;
     if (payload.categoryId !== undefined) body.categoryId = payload.categoryId === "" ? null : payload.categoryId;
@@ -105,7 +110,22 @@ export const vehiclesApi = {
     if (payload.sellingPoints !== undefined) body.sellingPoints = payload.sellingPoints;
     if (payload.sortOrder !== undefined) body.sortOrder = payload.sortOrder;
     const raw = await requestData<Vehicle>(http.put(`/admin/vehicles/${id}`, body));
+    if (payload.detailImages !== undefined) {
+      await vehiclesApi.saveDetailImages(id, payload.detailImages);
+    }
     return mapToListItem(raw);
+  },
+
+  detailImages(id: string) {
+    return requestData<VehicleDetailImage[]>(http.get(`/admin/vehicles/${id}/detail-images`));
+  },
+
+  saveDetailImages(id: string, images: VehicleDetailImage[]) {
+    return requestData<VehicleDetailImage[]>(
+      http.put(`/admin/vehicles/${id}/detail-images`, {
+        images: images.map((image) => ({ mediaId: image.mediaId }))
+      })
+    );
   },
 
   publish(id: string) {

@@ -11,7 +11,6 @@ import (
 
 	"vehivle/internal/domain/enum"
 	"vehivle/internal/domain/model"
-	"vehivle/internal/domain/rule"
 	"vehivle/internal/infrastructure/oss"
 	"vehivle/internal/repository/postgres"
 	"vehivle/internal/service/category"
@@ -66,6 +65,20 @@ type vehicleUpdateBody struct {
 type batchStatusBody struct {
 	IDs    []string           `json:"ids"`
 	Status enum.VehicleStatus `json:"status"`
+}
+
+type detailImagesBody struct {
+	Images []detailImageInput `json:"images"`
+}
+
+type detailImageInput struct {
+	MediaID string `json:"mediaId"`
+}
+
+type detailImageResp struct {
+	MediaID   string `json:"mediaId"`
+	URL       string `json:"url"`
+	SortOrder int    `json:"sortOrder"`
 }
 
 // vehicleListQueryParams 绑定 GET /admin/vehicles 的 query（与分类列表风格一致）。
@@ -208,6 +221,7 @@ func (v *Vehicles) List(c *gin.Context) {
 	}
 	response.Success(c, result)
 }
+
 /**
  * 附件封面图片URL
  * @param c *gin.Context
@@ -240,6 +254,29 @@ func (v *Vehicles) attachCoverImageURLs(c *gin.Context, items []*model.Vehicle) 
 			it.CoverImageURL = v.OSS.ObjectPublicURL(sk)
 		}
 	}
+}
+
+func (v *Vehicles) detailImagesToResp(c *gin.Context, rows []model.VehicleDetailMedia) []detailImageResp {
+	mediaIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		mediaIDs = append(mediaIDs, row.MediaID)
+	}
+	storageKeys, err := v.mediaRepo.MapStorageKeysByIDs(c.Request.Context(), mediaIDs)
+	if err != nil {
+		return []detailImageResp{}
+	}
+	out := make([]detailImageResp, 0, len(rows))
+	for _, row := range rows {
+		item := detailImageResp{
+			MediaID:   row.MediaID,
+			SortOrder: row.SortOrder,
+		}
+		if storageKey, ok := storageKeys[row.MediaID]; ok {
+			item.URL = v.OSS.ObjectPublicURL(storageKey)
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 // Create 创建车型
@@ -312,6 +349,55 @@ func (v *Vehicles) Update(c *gin.Context) {
 	response.Success(c, veh)
 }
 
+func (v *Vehicles) DetailImages(c *gin.Context) {
+	id := c.Param("vehicle_id")
+	if _, err := v.VehicleService.GetById(c.Request.Context(), id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.FailBusiness(c, "车型不存在")
+			return
+		}
+		response.FailBusiness(c, err.Error())
+		return
+	}
+	rows, err := v.VehicleService.ListDetailMedia(c.Request.Context(), id)
+	if err != nil {
+		response.FailBusiness(c, err.Error())
+		return
+	}
+	response.Success(c, v.detailImagesToResp(c, rows))
+}
+
+func (v *Vehicles) SaveDetailImages(c *gin.Context) {
+	id := c.Param("vehicle_id")
+	if _, err := v.VehicleService.GetById(c.Request.Context(), id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.FailBusiness(c, "车型不存在")
+			return
+		}
+		response.FailBusiness(c, err.Error())
+		return
+	}
+	var body detailImagesBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.FailParam(c, err.Error())
+		return
+	}
+	mediaIDs := make([]string, 0, len(body.Images))
+	for _, image := range body.Images {
+		mediaIDs = append(mediaIDs, strings.TrimSpace(image.MediaID))
+	}
+	if err := v.VehicleService.ReplaceDetailMedia(c.Request.Context(), id, mediaIDs); err != nil {
+		response.FailBusiness(c, err.Error())
+		return
+	}
+	rows, err := v.VehicleService.ListDetailMedia(c.Request.Context(), id)
+	if err != nil {
+		response.FailBusiness(c, err.Error())
+		return
+	}
+	response.Success(c, v.detailImagesToResp(c, rows))
+}
+
 // Delete 逻辑删除车型
 func (v *Vehicles) Delete(c *gin.Context) {
 	id := c.Param("vehicle_id")
@@ -339,11 +425,23 @@ func (v *Vehicles) Publish(c *gin.Context) {
 		response.FailBusiness(c, err.Error())
 		return
 	}
-	// 创建发布要求
-	req := rule.PublishRequirements{
-		HasCoverImage:     target.CoverMediaID != "",
-		HasDetailImages:   true,
-		HasRequiredParams: true,
+	categoryEnabled := false
+	if target.CategoryID != nil && strings.TrimSpace(*target.CategoryID) != "" {
+		cat, err := v.CategoryService.GetById(c.Request.Context(), *target.CategoryID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				response.FailBusiness(c, "分类不存在")
+				return
+			}
+			response.FailBusiness(c, err.Error())
+			return
+		}
+		categoryEnabled = cat.Status == enum.CategoryStatusEnabled
+	}
+	req, err := v.VehicleService.BuildPublishRequirements(c.Request.Context(), target, categoryEnabled)
+	if err != nil {
+		response.FailBusiness(c, err.Error())
+		return
 	}
 	if err := v.VehicleService.Publish(c.Request.Context(), id, req); err != nil {
 		// errors.Is 判断err是否是gorm.ErrRecordNotFound

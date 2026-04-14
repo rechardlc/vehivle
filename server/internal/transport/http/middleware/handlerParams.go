@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
 /**
  * 参数白名单控制中间件
  * @param allowFields 允许的字段列表
@@ -37,7 +38,7 @@ func ValidateParams(allowFields []string) gin.HandlerFunc {
 				// 中断请求，不再执行后续的中间件和路由处理
 				c.Abort()
 				return
-			}	
+			}
 		}
 		// 继续执行后续的中间件和路由处理
 		c.Next()

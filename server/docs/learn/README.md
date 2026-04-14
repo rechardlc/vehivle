@@ -7,8 +7,9 @@
 建议阅读顺序：
 
 1. 先看 [progress.md](./progress.md)，了解当前整体进度。
-2. 再看最新链路审计：[lesson-20260414.md](./lesson-20260414.md)。
-3. 遇到某个模块不理解时，再回看对应日期的 `lesson-*.md`。
+2. 再看最新未提交改动复盘：[lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md)。
+3. 需要理解上一轮全链路审计时，再看 [lesson-20260414.md](./lesson-20260414.md)。
+4. 遇到某个模块不理解时，再回看对应日期的 `lesson-*.md`。
 
 ## 与 `server/docs` 的关系
 
@@ -22,25 +23,27 @@
 
 ## 当前最重要结论
 
-最新审计日期：2026-04-14。
+最新复盘日期：2026-04-14。
 
-结论：`server` 的工程骨架链路已经形成，启动、路由、中间件、handler、service、repository、PostgreSQL、MinIO/S3 都有基本闭环；但从企业交付标准看，目前还不能算完整可交付。
+结论：`server` 的工程骨架链路已经形成，本轮未提交内容继续补齐了公开端读取、车型详情图、参数模板 Update 契约、分类分页默认值和发布校验等关键断点；但从企业交付标准看，目前还不能算完整可交付。
 
 关键原因：
 
-- 当前 `go test ./...` 编译失败，阻断点在 `internal/transport/http/helper/utils.go:53`。
-- 参数模板 `PUT /admin/param-templates/:id` 存在 URL id 与 body id 契约断点。
-- 参数模板 `List/Delete/GetById/GetItemsById` 的 server 链路已补充，但分页空结果、错误处理、路由命名仍需收口。
-- 公开端只注册了 `GET /api/v1/public/vehicles`，首页、分类、详情、联系配置、分享兜底尚未闭环。
-- 发布校验、媒体补偿/GC、RBAC 挂载、初始管理员种子、CI 门禁仍需补齐。
+- `helper.RequiredField` 的已知编译阻断点已修复，但仍需要用 `go test ./...` 验证全仓编译与测试。
+- 参数模板 `PUT /admin/param-templates/:id` 已改为以 URL id 为权威 id，列表空结果和 `ItemsCount` 错误传播也已收口；`getItemsById/getItemsbyId` 双路由仍需后续统一。
+- 公开端已补 `home/categories/vehicles/detail/contact/share-check`，但首页 `banners/zones` 仍是占位，公开 contact 的错误处理也偏静默。
+- 车型详情图链路已从迁移、模型、repo/service、管理端接口到后台多图上传形成闭环；但车型保存与详情图保存是两次请求，存在部分成功风险。
+- 发布校验已真实检查封面图、启用分类、详情图和必填参数；但 `vehicle_param_values` 仍缺管理端参数值写入/回显闭环。
+- 媒体补偿/GC、RBAC 挂载、初始管理员种子、CI 门禁和自动化测试仍需补齐。
 
-详细分析见 [lesson-20260414.md](./lesson-20260414.md)。
+详细分析见 [lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md) 与 [lesson-20260414.md](./lesson-20260414.md)。
 
 ## 文件索引
 
 | 文件 | 说明 |
 |---|---|
 | [progress.md](./progress.md) | 总进度、当前全链路状态、每日倒序记录。 |
+| [lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md) | 基于未提交 diff 的二次复盘：公开端、车型详情图、发布校验、参数模板契约与剩余风险。 |
 | [lesson-20260414.md](./lesson-20260414.md) | 全链路关系审计、当前缺陷、参数模板 server 链路补齐复盘、企业级解决方案、验收清单。 |
 | [lesson-20260413.md](./lesson-20260413.md) | 参数模板全链路：迁移、模型、GORM 一对多、事务 Update、组合根接入。 |
 | [lesson-20260412.md](./lesson-20260412.md) | 依赖注入重构：组合根、`buildHandlers()`、repo/service/handler 装配。 |

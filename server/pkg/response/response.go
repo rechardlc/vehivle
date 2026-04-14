@@ -39,7 +39,7 @@ type PageResult struct {
 
 // ListResult 通用分页响应体
 type ListResult[T any] struct {
-	List []T        `json:"list"`
+	List []T         `json:"list"`
 	Page *PageResult `json:"page"`
 }
 

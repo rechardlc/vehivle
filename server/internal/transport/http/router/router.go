@@ -21,6 +21,7 @@ type Handlers struct {
 	System         *handler.System
 	Upload         *handler.Upload
 	ParamTemplates *handler.ParamTemplates
+	Public         *handler.Public
 }
 
 type Router struct {
@@ -65,6 +66,8 @@ func (r *Router) Register() error {
 			vehicles.POST("/:vehicle_id/publish", r.handlers.Vehicles.Publish)
 			vehicles.POST("/:vehicle_id/unpublish", r.handlers.Vehicles.Unpublish)
 			vehicles.POST("/:vehicle_id/duplicate", r.handlers.Vehicles.Duplicate)
+			vehicles.GET("/:vehicle_id/detail-images", r.handlers.Vehicles.DetailImages)
+			vehicles.PUT("/:vehicle_id/detail-images", r.handlers.Vehicles.SaveDetailImages)
 			vehicles.GET("", middleware.ValidateParams(vehicleList), r.handlers.Vehicles.List)
 			vehicles.POST("", r.handlers.Vehicles.Create)
 			vehicles.PUT("/:vehicle_id", r.handlers.Vehicles.Update)
@@ -93,6 +96,7 @@ func (r *Router) Register() error {
 			paramTemplates.GET("/list", middleware.ValidateParams(templateList), r.handlers.ParamTemplates.List)
 			paramTemplates.POST("", r.handlers.ParamTemplates.Create)
 			paramTemplates.PUT("/:id", r.handlers.ParamTemplates.Update)
+			paramTemplates.GET("/getItemsById/:id", r.handlers.ParamTemplates.GetItemsById)
 			paramTemplates.GET("/getItemsbyId/:id", r.handlers.ParamTemplates.GetItemsById)
 			paramTemplates.GET("/getById/:id", r.handlers.ParamTemplates.GetById)
 			paramTemplates.DELETE("/:id", r.handlers.ParamTemplates.Delete)
@@ -104,7 +108,12 @@ func (r *Router) Register() error {
 	public := v1.Group("/public")
 	{
 		publicVehicleList := []string{"keyword", "categoryId", "page", "pageSize", "sortField", "sortOrder"}
-		public.GET("/vehicles", middleware.ValidateParams(publicVehicleList), r.handlers.Vehicles.List)
+		public.GET("/home", r.handlers.Public.Home)
+		public.GET("/categories", r.handlers.Public.Categories)
+		public.GET("/vehicles", middleware.ValidateParams(publicVehicleList), r.handlers.Public.Vehicles)
+		public.GET("/vehicles/:id/share-check", r.handlers.Public.ShareCheck)
+		public.GET("/vehicles/:id", r.handlers.Public.VehicleDetail)
+		public.GET("/contact", r.handlers.Public.Contact)
 	}
 
 	r.engine.NoRoute(r.noRouteHandler)

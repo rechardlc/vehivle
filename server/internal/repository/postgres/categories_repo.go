@@ -50,6 +50,7 @@ func categoryListOrderClause(q model.CategoryListQuery) string {
 	}
 	return "sort_order DESC, updated_at DESC"
 }
+
 /**
  * 根据ID获取分类
  */

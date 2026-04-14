@@ -10,19 +10,21 @@ import (
  * 车型状态枚举
  */
 type VehicleStatus string
+
 const (
-	VehicleStatusDraft VehicleStatus = "draft" // 草稿
-	VehicleStatusPublished VehicleStatus = "published" // 已发布
+	VehicleStatusDraft       VehicleStatus = "draft"       // 草稿
+	VehicleStatusPublished   VehicleStatus = "published"   // 已发布
 	VehicleStatusUnpublished VehicleStatus = "unpublished" // 未发布
-	VehicleStatusDeleted VehicleStatus = "deleted" // 已删除
+	VehicleStatusDeleted     VehicleStatus = "deleted"     // 已删除
 )
 
 /**
  * 价格模式枚举
  */
 type PriceMode string
+
 const (
-	PriceModeShowPrice PriceMode = "show_price" // 显示价格
+	PriceModeShowPrice    PriceMode = "show_price"    // 显示价格
 	PriceModePhoneInquiry PriceMode = "phone_inquiry" // 电话询价
 )
 
@@ -40,6 +42,7 @@ const (
  * 模板状态枚举
  */
 type ParamTemplateStatus int8
+
 const (
 	ParamTemplateStatusDisabled ParamTemplateStatus = 0
 	ParamTemplateStatusEnabled  ParamTemplateStatus = 1

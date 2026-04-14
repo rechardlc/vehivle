@@ -1,12 +1,13 @@
 package postgres
+
 import (
-	"gorm.io/gorm"
-	"gorm.io/driver/postgres"
-	"vehivle/pkg/logger"
-	"vehivle/configs"
-	"fmt"
-	"time"
 	"context"
+	"fmt"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"time"
+	"vehivle/configs"
+	"vehivle/pkg/logger"
 )
 
 // Open 打开数据库连接
@@ -57,6 +58,7 @@ func Ping(ctx context.Context, db *gorm.DB, skip bool) error {
 	// 检查数据库连接
 	return sqlDB.PingContext(ctx)
 }
+
 // close 关闭数据库连接
 func Close(db *gorm.DB) error {
 	sqlDB, err := db.DB()
@@ -65,6 +67,7 @@ func Close(db *gorm.DB) error {
 	}
 	return sqlDB.Close()
 }
+
 // isClosed 检查数据库连接是否已关闭
 // func isClosed(err error) bool {
 // 	return strings.Contains(err.Error(), "sql: database is closed")

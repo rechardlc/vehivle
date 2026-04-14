@@ -167,6 +167,12 @@ export interface Vehicle {
   createdAt: string;
 }
 
+export interface VehicleDetailImage {
+  mediaId: string;
+  url: string;
+  sortOrder?: number;
+}
+
 export interface VehicleListItem extends Vehicle {
   categoryName: string;
 }

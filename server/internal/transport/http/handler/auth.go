@@ -113,13 +113,13 @@ func (h *Auth) Logout(c *gin.Context) {
 func setAccessTokenCookie(c *gin.Context, token string, maxAge int, secure bool, domain string) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     CookieNameAccessToken, // 访问令牌名称
-		Value:    token, // 访问令牌值
-		Path:     CookiePathAPI, // 访问令牌路径：只有访问/api路径的请求才会携带cookie
-		MaxAge:   maxAge, // 访问令牌最大年龄：单位为秒
-		Secure:   secure, // 访问令牌是否安全：是否只通过 HTTPS 传输
-		HttpOnly: true, // 访问令牌是否只通过 HTTP 传输：是否只通过 HTTP 传输
-		Domain:   domain, // 访问令牌域名
-		SameSite: http.SameSiteLaxMode, // 访问令牌是否允许跨域
+		Value:    token,                 // 访问令牌值
+		Path:     CookiePathAPI,         // 访问令牌路径：只有访问/api路径的请求才会携带cookie
+		MaxAge:   maxAge,                // 访问令牌最大年龄：单位为秒
+		Secure:   secure,                // 访问令牌是否安全：是否只通过 HTTPS 传输
+		HttpOnly: true,                  // 访问令牌是否只通过 HTTP 传输：是否只通过 HTTP 传输
+		Domain:   domain,                // 访问令牌域名
+		SameSite: http.SameSiteLaxMode,  // 访问令牌是否允许跨域
 	})
 }
 

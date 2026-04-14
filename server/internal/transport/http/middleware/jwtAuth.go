@@ -13,7 +13,7 @@ const (
 	CookieAccessToken = "access_token"
 	CtxKeyUserID      = "current_user_id"
 	CtxKeyUsername    = "current_username"
-	CtxKeyRole       = "current_role"
+	CtxKeyRole        = "current_role"
 )
 
 // JWTAuth 从 httpOnly Cookie 读取 Access Token，解析 Claims 并注入 Context。

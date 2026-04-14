@@ -1,7 +1,8 @@
 package helper
+
 import (
-	"github.com/gin-gonic/gin"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"strings"
 )
 
@@ -43,14 +44,13 @@ func IsValidSortFieldAndOrder(sortField string, sortOrder string) (bool, error) 
 	return true, nil
 }
 
-
 /**
 校验字段字符串必填项
 */
 
 func RequiredField[T ~string](field T) error {
-	if field == "" {
-		return  fmt.Errorf("字段%s不能为空！")
+	if strings.TrimSpace(string(field)) == "" {
+		return fmt.Errorf("字段不能为空")
 	}
 	return nil
 }

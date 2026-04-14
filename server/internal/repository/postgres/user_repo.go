@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 	"vehivle/internal/domain/model"
 )
+
 type UserRepo struct {
 	db *gorm.DB
 }

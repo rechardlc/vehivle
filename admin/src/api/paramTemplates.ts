@@ -107,7 +107,7 @@ export const paramTemplatesApi = {
     return (data.list ?? []).map(mapTemplateToUi);
   },
   async getItemsById(id: string): Promise<ParamTemplateUi> {
-    const data = await requestData<ParamTemplate>(http.get(`/admin/param-templates/getItemsbyId/${id}`));
+    const data = await requestData<ParamTemplate>(http.get(`/admin/param-templates/getItemsById/${id}`));
     return mapTemplateToUi(data);
   },
   async create(payload: Omit<ParamTemplateUi, "id" | "itemNum">): Promise<ParamTemplateUi> {
@@ -115,9 +115,7 @@ export const paramTemplatesApi = {
     return mapTemplateToUi(data);
   },
   async update(id: string, payload: Omit<ParamTemplateUi, "id" | "itemNum">): Promise<ParamTemplateUi> {
-    const data = await requestData<ParamTemplate>(
-      http.put(`/admin/param-templates/${id}`, { id, ...mapPayloadToBackend(payload) })
-    );
+    const data = await requestData<ParamTemplate>(http.put(`/admin/param-templates/${id}`, mapPayloadToBackend(payload)));
     return mapTemplateToUi(data);
   },
   remove(id: string) {

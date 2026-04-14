@@ -148,6 +148,18 @@ server/
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
 
+### 2026-04-14（未提交改动复盘）
+
+- **完成**：新增 [lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md)，按当前未提交内容复盘公开端、车型详情图、参数模板、发布校验、分类分页和后台多图上传。
+- **完成（修复）**：`helper.RequiredField` 已移除无参数 `%s` 编译阻断；分类列表传入归一化后的 `pageSize`；参数模板列表空结果固定返回 `{ list: [], page }`，`ItemsCount` 不再吞错。
+- **完成（参数模板）**：`PUT /admin/param-templates/:id` 改为 URL id 权威；handler 使用请求 DTO，repo 在事务里更新主表、创建/更新子项、删除移除项；补 `getItemsById` 正确大小写别名。
+- **完成（公开端）**：新增独立 `Public` handler 与 `GET /public/home/categories/vehicles/{id}/contact/share-check`；公开端强制 `published` 过滤，并在详情页返回 `detailImages`、`params`、`contact`。
+- **完成（详情图）**：新增 `000006_create_vehicle_detail_and_param_values`，落地 `vehicle_detail_media` 与 `vehicle_param_values`；管理端补 `GET/PUT /admin/vehicles/:vehicle_id/detail-images`；前端新增 `MultiImageUploader` 支持最多 9 张、拖拽排序。
+- **完成（发布校验）**：发布前真实检查封面图、启用分类、详情图和启用参数模板下的必填参数值，不再把详情图/参数校验写死为 true。
+- **发现**：`vehicle_param_values` 目前只有建表、读取和校验，仍缺管理端参数值写入/回显；车型保存与详情图保存是两次请求，存在部分成功风险；`home` 的 `banners/zones` 仍是占位。
+- **文档**：更新 [README.md](./README.md) 的当前结论与文件索引，避免继续引用上一轮“P0 未修复、公开端缺失、参数模板 Update 未闭环”的旧状态。
+- **明天第一件事**：先跑 `go fmt ./...`、`go test ./...`；若通过，补车型参数值管理接口和后台表单，再给发布校验加表驱动测试。
+
 ### 2026-04-13
 
 - **完成**：**参数模板全链路落地**——从迁移到路由一招贯穿，新模块接入组合根只加 3 行
@@ -365,4 +377,4 @@ server/
 - **文档**：重写 [learn/README.md](./README.md)，把最新审计文档提升为优先阅读入口，并补充“如何判断一条后端链路完整”的检查框架。
 - **明日第一件事**：优先修复 P0 编译错误，然后修复参数模板 Update 的 URL id 契约，再补公开端 `home/categories/detail/contact/share-check` 链路。
 
-*最后更新：2026-04-14（全链路关系审计 + 参数模板 server 链路补齐复盘 + 缺陷等级 + 企业级解决方案；lesson-20260414 / README / progress 同步）*
+*最后更新：2026-04-14（未提交改动复盘 + 公开端/详情图/发布校验/参数模板契约同步；lesson-20260414-uncommitted-review / README / progress 同步）*

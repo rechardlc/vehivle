@@ -85,6 +85,7 @@ func (u *Upload) UploadImages(c *gin.Context) {
 		AssetType:  mediaAssetTypeImage,
 	}
 	if err := u.mediaRepo.Create(c.Request.Context(), row); err != nil {
+		_ = u.OSS.Client.RemoveObject(c.Request.Context(), u.OSS.Bucket, storageKey, minio.RemoveObjectOptions{})
 		msg := "媒体元数据保存失败，请稍后重试"
 		if strings.Contains(err.Error(), "does not exist") {
 			msg = "数据库未创建 media_assets 表：在 server 目录执行 go run ./cmd/migrate -op up 后再试"

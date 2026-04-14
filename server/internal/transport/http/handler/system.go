@@ -9,6 +9,7 @@ import (
 
 	"vehivle/internal/domain/model"
 	"vehivle/internal/infrastructure/oss"
+	"vehivle/internal/repository/postgres"
 	"vehivle/internal/service/system_setting"
 	"vehivle/pkg/response"
 )
@@ -16,12 +17,14 @@ import (
 type System struct {
 	OSS        oss.MinioClient
 	SysService *system_setting.SysService
+	MediaMeSvc *postgres.MediaAssetRepo
 }
 
-func NewSysSettings(svc *system_setting.SysService, ossClient oss.MinioClient) *System {
+func NewSysSettings(svc *system_setting.SysService, ossClient oss.MinioClient, meSvc *postgres.MediaAssetRepo) *System {
 	return &System{
 		OSS:        ossClient,
 		SysService: svc,
+		MediaMeSvc: meSvc,
 	}
 }
 
@@ -55,7 +58,15 @@ func (s *System) Detail(c *gin.Context) {
 		response.FailBusiness(c, "系统数据异常！")
 		return
 	}
-
+	if sys.DefaultShareImage != nil {
+		ids := []string{*sys.DefaultShareImage}
+		urls, _ := s.MediaMeSvc.MapStorageKeysByIDs(c.Request.Context(), ids)
+		if len(urls) > 0 {
+			if imageUrl, ok := urls[*sys.DefaultShareImage]; ok {
+				sys.DefaultShareImage = &imageUrl
+			}
+		}
+	}
 	response.Success(c, sysToResp(sys, s.OSS))
 }
 
@@ -133,6 +144,15 @@ func (s *System) Update(c *gin.Context) {
 	if err != nil {
 		response.FailBusiness(c, "更新成功但获取详情失败")
 		return
+	}
+	if detail.DefaultShareImage != nil {
+		ids := []string{*detail.DefaultShareImage}
+		m, _ := s.MediaMeSvc.MapStorageKeysByIDs(c.Request.Context(), ids)
+		if len(m) > 0 {
+			if url, ok := m[*detail.DefaultShareImage]; ok {
+				detail.DefaultShareImage = &url
+			}
+		}
 	}
 	response.Success(c, sysToResp(detail, s.OSS))
 }

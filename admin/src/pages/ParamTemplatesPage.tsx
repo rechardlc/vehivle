@@ -168,7 +168,8 @@ export function ParamTemplatesPage() {
       categoryId: values.categoryId,
       status: values.statusEnabled ? "enabled" : "disabled",
       items: values.items.map((item, index) => ({
-        id: item.id ?? "",
+        ...(item.id ? { id: item.id } : {}),
+        ...(item.templateId ? { templateId: item.templateId } : {}),
         fieldKey: item.fieldKey,
         fieldName: item.fieldName,
         fieldType: item.fieldType,
@@ -263,6 +264,12 @@ export function ParamTemplatesPage() {
               <Space orientation="vertical" style={{ width: "100%" }} size={12}>
                 {fields.map((field, index) => (
                   <div className="list-row" key={field.key}>
+                    <Form.Item name={[field.name, "id"]} hidden>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item name={[field.name, "templateId"]} hidden>
+                      <Input />
+                    </Form.Item>
                     <Form.Item
                       name={[field.name, "fieldKey"]}
                       label={index === 0 ? "字段 Key" : ""}

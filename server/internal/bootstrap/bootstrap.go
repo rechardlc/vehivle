@@ -109,9 +109,10 @@ func (b *Bootstrap) buildHandlers() *router.Handlers {
 		User:           handler.NewUser(),
 		Vehicles:       handler.NewVehicles(vehSvc, catSvc, mediaRepo, b.ossClient),
 		Categories:     handler.NewCategories(catSvc),
-		System:         handler.NewSysSettings(sysSvc, b.ossClient),
+		System:         handler.NewSysSettings(sysSvc, b.ossClient, mediaRepo),
 		Upload:         handler.NewUpload(b.ossClient, mediaRepo),
 		ParamTemplates: handler.NewParamTemplates(plateTemSvc),
+		Public:         handler.NewPublic(vehSvc, catSvc, sysSvc, mediaRepo, b.ossClient),
 	}
 }
 
