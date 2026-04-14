@@ -1,8 +1,12 @@
 # Go 后端学习进度
 
-> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）、[lesson-20260319.md](./lesson-20260319.md)、[lesson-20260320.md](./lesson-20260320.md)、[lesson-20260321.md](./lesson-20260321.md)、[lesson-20260323.md](./lesson-20260323.md)、[lesson-20260325.md](./lesson-20260325.md)、[lesson-20260328.md](./lesson-20260328.md)、[lesson-20260329.md](./lesson-20260329.md)、[lesson-20260408.md](./lesson-20260408.md)、[lesson-20260409.md](./lesson-20260409.md)、[lesson-20260410.md](./lesson-20260410.md)、[lesson-20260411.md](./lesson-20260411.md)、[lesson-20260412.md](./lesson-20260412.md)、[lesson-20260413.md](./lesson-20260413.md)（最新：**参数模板全链路**——`000005` 迁移、`ParamTemplate` + `ParamTemplateItem` 建模、GORM 一对多事务更新、`buildHandlers()` 新模块接入）。索引见 [learn/README.md](./README.md)。
+> 每日进度记录与项目落地状态。学习内容见 [lesson-20260317.md](./lesson-20260317.md)（知识库）以及各日期 `lesson-*.md`；最新记录见 [lesson-20260414.md](./lesson-20260414.md)（全链路审计 + 参数模板 server 链路补齐复盘）。索引见 [learn/README.md](./README.md)。
 
 ---
+
+## 最新审计提醒（2026-04-14）
+
+最新全链路审计见 [lesson-20260414.md](./lesson-20260414.md)。当前结论是：工程骨架链路已经形成，但还不能判定为企业级完整可交付；`go test ./...` 当前因 `internal/transport/http/helper/utils.go:53` 编译失败，参数模板 Update、公开端聚合接口、分类默认分页、发布校验、媒体补偿、RBAC 挂载仍需优先闭环。
 
 ## 一、项目落地顺序（对齐循序渐进总说明）
 
@@ -30,7 +34,7 @@
 | 5 | PostgreSQL + 迁移 + Repository | 进行中（✅ 连接、迁移至 **`000005`**、车型/分类/系统设置/参数模板读写链路；✅ `Update` 支撑 `Publish`；✅ 分类 CRUD；✅ 车型 Update/逻辑 Delete；✅ MediaAssetRepo；✅ SystemRepo；✅ **ParamTemplateRepo**（含事务 Update）；⏳ 分页） |
 | 5.5 | 对象存储（MinIO/S3） | ✅ 已完成（客户端封装、连接池、Bucket 管理、图片上传 Handler、Docker MinIO 服务） |
 | 6 | 认证与权限（JWT、RBAC） | ✅ 已完成（双 Token + httpOnly Cookie + JWTAuth + RequireRole + Refresh + Logout + Validate 加固） |
-| 7 | 核心业务域（分类、车型、媒体、系统设置、参数模板等） | 进行中（✅ 分类 CRUD；✅ 上传 MinIO + media_assets 落库；✅ 车型 List/Create/Update/Delete/Publish/Unpublish/Duplicate/Batch；✅ 系统设置 Detail/Create/Update + 管理端页面；✅ **参数模板 Create/Update/Detail/AllDetail** + 管理端页面（一级分类绑定）；⏳ 参数模板 List/Delete 路由；⏳ 公开端联系配置/分享兜底） |
+| 7 | 核心业务域（分类、车型、媒体、系统设置、参数模板等） | 进行中（✅ 分类 CRUD；✅ 上传 MinIO + media_assets 落库；✅ 车型 List/Create/Update/Delete/Publish/Unpublish/Duplicate/Batch；✅ 系统设置 Detail/Create/Update；✅ **参数模板 Create/Update/GetById/GetItemsById/List/Delete**；⏳ 参数模板 Update URL id 契约、列表空结果与错误处理收口；⏳ 公开端联系配置/分享兜底） |
 | 8 | 缓存、性能、异常兜底 | 待开始 |
 | 9 | 测试与质量门禁 | 待开始 |
 | 10 | 部署与上线 | 待开始 |
@@ -61,7 +65,7 @@ main ✅
             │    │    └─ mediaRepo → *gorm.DB（拼 coverImageUrl）
             │    ├─ handlers.Categories ✅ List/Create/Update/Delete
             │    │    └─ categorySvc → CategoryRepo → *gorm.DB
-            │    ├─ handlers.ParamTemplates ✅ Create/Update/Detail/AllDetail
+            │    ├─ handlers.ParamTemplates ✅ Create/Update/GetById/GetItemsById/List/Delete
             │    │    └─ paramTemplateSvc → ParamTemplateRepo → *gorm.DB（含事务 Update）
             │    ├─ handlers.System ✅ GET/POST/PUT /admin/system-settings
             │    │    └─ sysSvc → SysRepo → *gorm.DB
@@ -84,7 +88,7 @@ main ✅
 | 7 | 种子数据——初始管理员账号 | `cmd/seed/main.go` 或迁移 `000006` | ⏳ |
 | 8 | `.env` 需补全 JWT 密钥 ≥ 32 字符 | `.env` / `.env.dev` | ⏳ |
 | 9 | 公开端尚无系统设置/联系配置聚合接口 | `public/contact` 或 `public/home` 聚合 | ⏳ |
-| 10 | 参数模板 **List / Delete** 路由未注册 | `handler/param_template.go`、`router.go` | ⏳ |
+| 10 | 参数模板 **List / Delete** 已接入后的契约收口 | `handler/param_template.go`、`router.go`、`service/param_template/service.go` | ⏳ 空列表分页、错误处理、路由命名仍待收口 |
 | 11 | `helper.RequiredField` 格式化 `%s` 缺参数 | `helper/utils.go` | ⏳ |
 
 ---
@@ -108,7 +112,7 @@ server/
 ├── internal/domain/    # 领域语义 ✅（enum / model / rule）
 ├── internal/service/vehicle/ # 业务服务 ✅（GetById、写接口、Publish、Unpublish、Duplicate、Batch）
 ├── internal/service/system_setting/ # 系统设置业务 ✅（Detail、Create、Update）
-├── internal/service/param_template/ # 参数模板业务 ✅（Create、Update、Detail、AllDetail）
+├── internal/service/param_template/ # 参数模板业务 ✅（Create、Update、GetById、GetItemsById、List、Delete）
 ├── internal/repository/postgres/ # 数据仓储 ✅（VehicleRepo、MediaAssetRepo、CategoryRepo、SystemRepo、ParamTemplateRepo）
 ├── internal/service/auth/    # 认证业务 ✅（Login、RefreshToken、GetCurrentUser）
 ├── internal/transport/http/
@@ -127,7 +131,7 @@ server/
 
 ## 五、下一步建议（对齐 [循序渐进总说明](../循序渐进总说明.md) 第 6 步及后续）
 
-1. **参数模板补全**：补 `GET /admin/param-templates` 列表分页 + `DELETE /admin/param-templates/:id` 路由注册。
+1. **参数模板补全**：收口 `GET /admin/param-templates/list` 空列表分页响应、`ItemsCount` 错误处理、`getItemsbyId` 路由命名，并修复 `PUT /admin/param-templates/:id` 只信任 URL id。
 2. **公开端系统设置**：补 `contact`/`home` 聚合读取，让小程序真正消费 `system_settings`（电话、微信、免责声明、默认分享图）。
 3. **`.env` 补全 JWT 密钥**：`VEHIVLE_JWT_SECRET` 和 `VEHIVLE_JWT_REFRESH_SECRET` ≥ 32 字符，否则启动报错（Validate 已校验）。
 4. **后端分页**：管理端车型列表改为 SQL `LIMIT/OFFSET` 或游标，与 admin 筛选对齐。
@@ -150,9 +154,9 @@ server/
 - **完成（迁移）**：新增 **`000005_create_param_templates_tables`**——`param_templates`（一级分类唯一绑定）+ `param_template_items`（字段定义：text/number/single_select）；联合唯一索引 `(template_id, field_key)`
 - **完成（领域）**：`model.ParamTemplate`（含 `Items []ParamTemplateItem` 一对多关联）；`model.ParamBody`（更新 DTO，可选指针）；`model.ParamTemplateItem`（`*int8` 的 required/display 避免 bool 零值陷阱）
 - **完成（枚举）**：`enum.ParamTemplateStatus`（int8 0/1） + `driver.Valuer` + `sql.Scanner`
-- **完成（仓储）**：`ParamTemplateRepo`——Create / **Update（事务三步：更主表→upsert 子项→删已移除项）** / Delete / Detail / AllDetail(`Preload`) / Count
-- **完成（服务）**：`ParamTemplateService`——Create / Update（先查存在性） / Detail / AllDetail
-- **完成（接口）**：`POST/PUT/GET /admin/param-templates`（Create / Update / Detail / AllDetail）
+- **完成（仓储）**：`ParamTemplateRepo`——Create / **Update（事务三步：更主表→upsert 子项→删已移除项）** / Delete / Detail / GetItemsById(`Preload`) / Count
+- **完成（服务）**：`ParamTemplateService`——Create / Update（先查存在性） / Detail / GetItemsById
+- **完成（接口）**：`POST/PUT/GET /admin/param-templates`（Create / Update / Detail / GetItemsById）
 - **完成（DI 接入）**：`buildHandlers()` 新增 `plateTemRepo → plateTemSvc → handler.NewParamTemplates(svc)`；`Handlers` 结构体新增 `ParamTemplates`
 - **完成（helper）**：新增 `RequiredField[T ~string]` 泛型必填校验函数
 - **完成（路由优化）**：404/405 错误信息中文化（含路径/方法提示）；注释清理
@@ -350,4 +354,15 @@ server/
 
 ---
 
-*最后更新：2026-04-13（参数模板全链路——000005 迁移 + model + repo(事务) + service + handler + 组合根接入；lesson-20260413 / README / progress 同步）*
+### 2026-04-14
+
+- **完成**：新增 [lesson-20260414.md](./lesson-20260414.md)，以当前代码为准完成 `server` 全链路关系审计，覆盖启动链路、请求链路、模块完整度、缺陷等级、企业级解决方案和验收清单。
+- **结论**：工程骨架链路已经形成，但当前不能视为完整可交付；`go test ./...` 已暴露 `helper/utils.go:53` 编译失败，参数模板 Update、公开端聚合接口、分类默认分页、发布校验、媒体补偿、RBAC 挂载仍需闭环。
+- **完成（补充）**：只按 `server` 未提交内容复盘参数模板后端链路：新增 `TmpQuery`、`PamListTmp`，repo/service/handler/router 接入 `List`、`Delete`、`GetById`、`GetItemsById`，分类分页常量抽到 `internal/transport/http/constant`。
+- **学习（补充）**：列表 DTO 与详情 DTO 要分开：`GetById` 只查主表，`GetItemsById` 才 `Preload("Items")`；列表额外返回 `itemNum` 时，当前 `ItemsCount` 是并发 N+1 查询，后续可用 `JOIN/GROUP BY` 收口。
+- **发现（补充）**：`PUT /admin/param-templates/:id` 仍未闭环，只用 URL id 做存在性检查，真正更新仍依赖 body 里的 `ID`；`count == 0` 时 List 返回零值结构，建议固定返回 `{ list: [], page: {...} }`；`ItemsCount` 当前吞错。
+- **验证（补充）**：本次学习记录仅覆盖 `server` 文档，已用 `git diff --check` 检查 `server/docs/learn` 相关文件；Go 编译仍会被 `helper/utils.go:53` 的 P0 错误阻断，需优先修复后再跑 `go test ./...`。
+- **文档**：重写 [learn/README.md](./README.md)，把最新审计文档提升为优先阅读入口，并补充“如何判断一条后端链路完整”的检查框架。
+- **明日第一件事**：优先修复 P0 编译错误，然后修复参数模板 Update 的 URL id 契约，再补公开端 `home/categories/detail/contact/share-check` 链路。
+
+*最后更新：2026-04-14（全链路关系审计 + 参数模板 server 链路补齐复盘 + 缺陷等级 + 企业级解决方案；lesson-20260414 / README / progress 同步）*

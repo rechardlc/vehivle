@@ -1,36 +1,80 @@
-# learn — Go 后端学习记录
+# learn - Go 后端学习与链路复盘
 
 ## 作用
-沉淀每日学习笔记、进度与复盘，与 `server/docs` 其他目录配合使用。
+
+这个目录用于沉淀 `server` 的每日学习记录、全链路复盘、缺陷审计与企业级解法。它不是 API 正式契约源，而是帮助我们从“能写代码”推进到“能判断链路是否闭环”的学习型文档。
+
+建议阅读顺序：
+
+1. 先看 [progress.md](./progress.md)，了解当前整体进度。
+2. 再看最新链路审计：[lesson-20260414.md](./lesson-20260414.md)。
+3. 遇到某个模块不理解时，再回看对应日期的 `lesson-*.md`。
 
 ## 与 `server/docs` 的关系
-| 目录 | 内容 |
-|------|------|
-| [../README.md](../README.md) | 文档总览与原则 |
-| [../循序渐进总说明.md](../循序渐进总说明.md) | 12 步落地顺序与每步完成标准 |
-| [../learning-path/go-backend-learning-roadmap.md](../learning-path/go-backend-learning-roadmap.md) | 阶段化学习路线与验收 |
-| [../prd-mapping/README.md](../prd-mapping/README.md) | PRD/技术到实现的映射 |
 
-本目录专注 **执行记录**：今天学了什么、代码推进到哪、明天第一件事。
+| 文档 | 用途 |
+|---|---|
+| [../README.md](../README.md) | 后端文档总入口。 |
+| [../循序渐进总说明.md](../循序渐进总说明.md) | 12 步落地顺序与每步完成标准。 |
+| [../learning-path/go-backend-learning-roadmap.md](../learning-path/go-backend-learning-roadmap.md) | Go 后端学习路线。 |
+| [../prd-mapping/README.md](../prd-mapping/README.md) | PRD/技术方案到实现的映射。 |
+| [request-chain-frontend-guide.md](./request-chain-frontend-guide.md) | 从前端视角理解后端请求链路。 |
+
+## 当前最重要结论
+
+最新审计日期：2026-04-14。
+
+结论：`server` 的工程骨架链路已经形成，启动、路由、中间件、handler、service、repository、PostgreSQL、MinIO/S3 都有基本闭环；但从企业交付标准看，目前还不能算完整可交付。
+
+关键原因：
+
+- 当前 `go test ./...` 编译失败，阻断点在 `internal/transport/http/helper/utils.go:53`。
+- 参数模板 `PUT /admin/param-templates/:id` 存在 URL id 与 body id 契约断点。
+- 参数模板 `List/Delete/GetById/GetItemsById` 的 server 链路已补充，但分页空结果、错误处理、路由命名仍需收口。
+- 公开端只注册了 `GET /api/v1/public/vehicles`，首页、分类、详情、联系配置、分享兜底尚未闭环。
+- 发布校验、媒体补偿/GC、RBAC 挂载、初始管理员种子、CI 门禁仍需补齐。
+
+详细分析见 [lesson-20260414.md](./lesson-20260414.md)。
 
 ## 文件索引
-| 文件 | 说明 |
-|------|------|
-| [progress.md](./progress.md) | 总进度表、全链路状态、每日倒序记录 |
-| [lesson-20260317.md](./lesson-20260317.md) | 知识库（工程壳、配置、日志等） |
-| [lesson-20260318.md](./lesson-20260318.md) | 指针/值与 logger 数据流 |
-| [lesson-20260319.md](./lesson-20260319.md) | HTTP 基座、router、通配响应 |
-| [lesson-20260320.md](./lesson-20260320.md) | domain、Postgres 连接、bootstrap 注入 |
-| [lesson-20260321.md](./lesson-20260321.md) | 迁移、分层诊断、车型 List 链路落地 |
-| [lesson-20260323.md](./lesson-20260323.md) | 301 重定向排障、air 静默降级、`*string` 指针修复 |
-| [lesson-20260325.md](./lesson-20260325.md) | 分类 PATCH：可选指针体、合并与校验、`Name` vs `ParentID` 赋值 |
-| [lesson-20260328.md](./lesson-20260328.md) | GORM 表/列映射、`TableName`、迁移与运行时、domain 多类型同文件 |
-| [lesson-20260329.md](./lesson-20260329.md) | struct tag（`json`/`form`/`gorm`）、`ShouldBindQuery`/`ShouldBindJSON`、GET query 与 FormData；Gin 中间件（`HandlerFunc`、`Use`、单路由、`Next`/`Abort`、`ValidateParams`） |
-| [lesson-20260408.md](./lesson-20260408.md) | MinIO/S3 对象存储集成（客户端封装、Bootstrap 连接池、Bucket 自动创建）；图片上传 Handler（MIME 白名单、`PutObject`、`defer`）；`injectRouter` 错误处理改进；统一响应 `RequestID` 补全；Docker Compose 扩展 MinIO；前端直传适配 |
-| [lesson-20260409.md](./lesson-20260409.md) | **`media_assets` 迁移与语义**；上传后写库、返回 `id`/`url`/`storageKey`；`coverImageUrl` 拼接；`VehicleService` 写接口与批量/发布/下架/复制；路由补全；前端 `coverMediaId` = 媒体 UUID |
-| [lesson-20260410.md](./lesson-20260410.md) | **JWT 认证闭环**——双 Token + httpOnly Cookie + 角色鉴权；链路审计 8 项偏离修复（`json:"-"`、统一错误、`SameSite=Lax`、Refresh 实现、RT MaxAge 独立、Validate 密钥校验、RequireRole、CookieSecure） |
-| [lesson-20260411.md](./lesson-20260411.md) | **`system_settings` 单行表重构**；`000004` 迁移、Repository/Service/Handler 链路；`/admin/system-settings` 读写接口；管理端系统设置页与价格模式映射 |
-| [lesson-20260412.md](./lesson-20260412.md) | **依赖注入重构**；组合根模式；`buildHandlers()` 集中装配 repo→service→handler；handler/router 去掉 `*gorm.DB`；完整调用链路图 |
-| [lesson-20260413.md](./lesson-20260413.md) | **参数模板全链路**；`000005` 迁移（param_templates + param_template_items）；GORM 一对多 Preload；事务三步 Update；泛型校验 `RequiredField[T ~string]`；组合根新模块接入 |
 
-建议阅读顺序：**先看 [progress.md](./progress.md) 当前状态**，再按日期打开对应 `lesson-*.md`（最新：`2026-04-13` 参数模板全链路）。
+| 文件 | 说明 |
+|---|---|
+| [progress.md](./progress.md) | 总进度、当前全链路状态、每日倒序记录。 |
+| [lesson-20260414.md](./lesson-20260414.md) | 全链路关系审计、当前缺陷、参数模板 server 链路补齐复盘、企业级解决方案、验收清单。 |
+| [lesson-20260413.md](./lesson-20260413.md) | 参数模板全链路：迁移、模型、GORM 一对多、事务 Update、组合根接入。 |
+| [lesson-20260412.md](./lesson-20260412.md) | 依赖注入重构：组合根、`buildHandlers()`、repo/service/handler 装配。 |
+| [lesson-20260411.md](./lesson-20260411.md) | `system_settings` 单行表、系统设置读写链路。 |
+| [lesson-20260410.md](./lesson-20260410.md) | JWT 认证闭环：双 Token、httpOnly Cookie、Refresh、Logout、RBAC 能力。 |
+| [lesson-20260409.md](./lesson-20260409.md) | `media_assets`、上传落库、车辆写接口、封面图 URL 拼接。 |
+| [lesson-20260408.md](./lesson-20260408.md) | MinIO/S3 对象存储、上传 Handler、Docker Compose 扩展。 |
+| [lesson-20260329.md](./lesson-20260329.md) | struct tag、query/body 绑定、Gin 中间件、参数白名单。 |
+| [lesson-20260328.md](./lesson-20260328.md) | GORM 表/列映射、迁移与运行时职责分离。 |
+| [lesson-20260325.md](./lesson-20260325.md) | 分类 PATCH/PUT：可选指针体、合并后校验。 |
+| [lesson-20260323.md](./lesson-20260323.md) | 301 重定向排障、`*string` 指针修复、JSON 命名风格统一。 |
+| [lesson-20260321.md](./lesson-20260321.md) | 数据库迁移、Repository、车辆 List 链路诊断。 |
+| [lesson-20260320.md](./lesson-20260320.md) | domain、PostgreSQL 连接、bootstrap 注入。 |
+| [lesson-20260319.md](./lesson-20260319.md) | HTTP 基座、router、handler、统一响应。 |
+| [lesson-20260318.md](./lesson-20260318.md) | 指针/值与 logger 数据流。 |
+| [lesson-20260317.md](./lesson-20260317.md) | 工程壳、配置、日志、响应、启动入口。 |
+
+## 如何判断一条后端链路完整
+
+一条企业级链路不要只看“有没有路由”或“有没有 service”，而要按业务动作逐项检查：
+
+```text
+路由
+  -> 鉴权/授权
+  -> 请求 DTO
+  -> 参数校验
+  -> 业务规则
+  -> repo/事务
+  -> DB/OSS/外部依赖
+  -> 响应 DTO
+  -> 错误码
+  -> 日志/审计
+  -> 测试
+  -> 文档契约
+```
+
+如果其中任何一环靠隐式约定、路径字符串判断、前端补救、人工记忆或没有测试兜底，就只能算“能跑”，不能算“企业级闭环”。

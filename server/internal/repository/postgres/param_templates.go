@@ -16,6 +16,22 @@ func NewParamTemplateRepo(db *gorm.DB) *ParamTemplateRepo {
 	return &ParamTemplateRepo{db: db}
 }
 
+// 查询模板列表（分页）
+func (r *ParamTemplateRepo) List(ctx context.Context, q *model.TmpQuery) (*[]model.ParamTemplate, error) {
+	var rows []model.ParamTemplate
+	offset := (q.Page - 1) * q.PageSize
+	err := r.db.WithContext(ctx).
+		Model(&model.ParamTemplate{}).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(q.PageSize).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return &rows, nil
+}
+
 // 创建模板
 func (r *ParamTemplateRepo) Create(ctx context.Context, p *model.ParamTemplate) (*model.ParamTemplate, error) {
 	if err := r.db.WithContext(ctx).Create(p).Error; err != nil {
@@ -26,7 +42,7 @@ func (r *ParamTemplateRepo) Create(ctx context.Context, p *model.ParamTemplate) 
 
 // 更新模板
 func (r *ParamTemplateRepo) Update(ctx context.Context, p *model.ParamTemplate) (*model.ParamTemplate, error) {
-	return p, r.db.WithContext(ctx).Transaction(func (tx *gorm.DB) error  {
+	return p, r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 除去Items字段，更新所有的字段
 		if err := tx.Model(p).Omit("Items").Updates(p).Error; err != nil {
 			return err
@@ -55,26 +71,17 @@ func (r *ParamTemplateRepo) Update(ctx context.Context, p *model.ParamTemplate) 
 	})
 }
 
-// 删除模板
-func (r *ParamTemplateRepo) Delete(ctx context.Context, id string) error {
-	if err := r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.ParamTemplate{}).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
 // 获取模板总数
 func (r *ParamTemplateRepo) Count(ctx context.Context) (int64, error) {
 	var count int64
-	var m model.ParamTemplate
-	if err := r.db.WithContext(ctx).Model(&m).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&model.ParamTemplate{}).Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
 // 只查询模板本身的数据
-func (r *ParamTemplateRepo) Detail(ctx context.Context, id string) (*model.ParamTemplate, error) {
+func (r *ParamTemplateRepo) GetById(ctx context.Context, id string) (*model.ParamTemplate, error) {
 	var row model.ParamTemplate
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&row).Error; err != nil {
 		return nil, err
@@ -84,7 +91,7 @@ func (r *ParamTemplateRepo) Detail(ctx context.Context, id string) (*model.Param
 
 // 查询完整的模板（模板本身的数据+items的数据）
 
-func (r *ParamTemplateRepo) AllDetail(ctx context.Context, id string) (*model.ParamTemplate, error) {
+func (r *ParamTemplateRepo) GetItemsById(ctx context.Context, id string) (*model.ParamTemplate, error) {
 	var row model.ParamTemplate
 	// Preload： 会连带查询关联的子表的数据，字段为必须ParamTemplate的结构体的名称
 	err := r.db.WithContext(ctx).Preload("Items").Where("id=?", id).First(&row).Error
@@ -100,4 +107,26 @@ func (r *ParamTemplateRepo) CreateItem(ctx context.Context, i *model.ParamTempla
 		return nil, err
 	}
 	return i, nil
+}
+
+// 删除模板
+func (r *ParamTemplateRepo) Delete(ctx context.Context, id string) error {
+	// 在设计表时，关联了    category_id UUID NOT NULL REFERENCES categories (id) ON DELETE RESTRICT,
+	// 所以执行时，默认删除主表，自动删除子表
+	if err := r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.ParamTemplate{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ParamTemplateRepo) ItemsCount(ctx context.Context, id string) (int64, error) {
+	var count int64
+	if err := r.db.
+			WithContext(ctx).
+			Model(&model.ParamTemplateItem{}).
+			Where("template_id = ?", id).
+			Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }

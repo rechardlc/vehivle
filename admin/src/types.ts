@@ -13,6 +13,18 @@ export interface PagedResult<T> {
   pageSize: number;
 }
 
+export interface PageMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ListResponse<T> {
+  list: T[];
+  page: PageMeta;
+}
+
 export type Role = "super_admin" | "editor";
 
 export interface AdminUser {
@@ -50,23 +62,89 @@ export interface Category {
 }
 
 export type FieldType = "text" | "number" | "single";
+export type ParamTemplateBackendFieldType = "text" | "number" | "single_select";
+export type ParamTemplateUiFieldType = FieldType;
+export type ParamTemplateStatus = 0 | 1;
+export type ParamTemplateUiStatus = "enabled" | "disabled";
+export type ParamTemplateFlag = 0 | 1;
+
 export interface ParamTemplateItem {
-  id: string;
+  id?: string;
+  templateId?: string;
   fieldKey: string;
   fieldName: string;
-  fieldType: FieldType;
-  unit?: string;
-  required: boolean;
-  display: boolean;
+  fieldType: ParamTemplateBackendFieldType;
+  unit?: string | null;
+  required: ParamTemplateFlag;
+  display: ParamTemplateFlag;
   sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ParamTemplate {
   id: string;
   name: string;
   categoryId: string;
-  status: "enabled" | "disabled";
+  status: ParamTemplateStatus;
   items: ParamTemplateItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ParamTemplateListItem extends ParamTemplate {
+  itemNum: number;
+  categoryName?: string;
+}
+
+export interface ParamTemplateListParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export type ParamTemplateListResponse = ListResponse<ParamTemplateListItem>;
+
+export interface ParamTemplateItemPayload {
+  id?: string;
+  templateId?: string;
+  fieldKey: string;
+  fieldName: string;
+  fieldType: ParamTemplateBackendFieldType;
+  unit?: string | null;
+  required: ParamTemplateFlag;
+  display: ParamTemplateFlag;
+  sortOrder: number;
+}
+
+export interface ParamTemplatePayload {
+  name: string;
+  categoryId: string;
+  status: ParamTemplateStatus;
+  items: ParamTemplateItemPayload[];
+}
+
+export interface ParamTemplateUiItem {
+  id?: string;
+  templateId?: string;
+  fieldKey: string;
+  fieldName: string;
+  fieldType: ParamTemplateUiFieldType;
+  unit?: string;
+  required: boolean;
+  display: boolean;
+  sortOrder: number;
+}
+
+export interface ParamTemplateUi {
+  id: string;
+  name: string;
+  categoryId: string;
+  status: ParamTemplateUiStatus;
+  items: ParamTemplateUiItem[];
+  itemNum: number;
+  categoryName?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type VehicleStatus = "draft" | "published" | "unpublished" | "deleted";

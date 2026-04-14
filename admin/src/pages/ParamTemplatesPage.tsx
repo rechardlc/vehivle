@@ -20,16 +20,18 @@ import { useMemo, useState } from "react";
 import { categoriesApi } from "../api/categories";
 import { paramTemplatesApi } from "../api/paramTemplates";
 import { PageCard } from "../components/PageCard";
-import type { FieldType, ParamTemplate, ParamTemplateItem } from "../types";
+import type { ParamTemplateUi, ParamTemplateUiFieldType, ParamTemplateUiItem } from "../types";
+
+type ParamTemplate = ParamTemplateUi;
 
 interface TemplateFormValue {
   name: string;
   categoryId: string;
   statusEnabled: boolean;
-  items: Array<Omit<ParamTemplateItem, "id"> & { id?: string }>;
+  items: ParamTemplateUiItem[];
 }
 
-const fieldTypeOptions: Array<{ label: string; value: FieldType }> = [
+const fieldTypeOptions: Array<{ label: string; value: ParamTemplateUiFieldType }> = [
   { label: "文本", value: "text" },
   { label: "数值", value: "number" },
   { label: "单选", value: "single" }
@@ -40,11 +42,12 @@ export function ParamTemplatesPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<TemplateFormValue>();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<ParamTemplate | null>(null);
+  const [editing, setEditing] = useState<ParamTemplateUi | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const templatesQuery = useQuery({
     queryKey: ["param-templates"],
-    queryFn: paramTemplatesApi.list
+    queryFn: () => paramTemplatesApi.list()
   });
 
   /** 模板只绑定一级分类（PRD：按一级大类维护参数项；二级为品牌/筛选用） */
@@ -64,7 +67,8 @@ export function ParamTemplatesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<ParamTemplate> }) => paramTemplatesApi.update(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Omit<ParamTemplateUi, "id" | "itemNum"> }) =>
+      paramTemplatesApi.update(id, payload),
     onSuccess: () => {
       message.success("模板更新成功");
       queryClient.invalidateQueries({ queryKey: ["param-templates"] });
@@ -88,6 +92,28 @@ export function ParamTemplatesPage() {
         .filter((c) => c.level === 1)
         .map((item) => ({ label: item.name, value: item.id })),
     [categoriesQuery.data]
+  );
+
+  const categoryNameById = useMemo(() => new Map(categoryOptions.map((item) => [item.value, item.label])), [categoryOptions]);
+
+  const tableTemplates = useMemo(
+    () =>
+      (templatesQuery.data ?? []).map((template) => ({
+        ...template,
+        categoryName: template.categoryName ?? categoryNameById.get(template.categoryId) ?? "-",
+        items:
+          template.items.length > 0
+            ? template.items
+            : Array.from({ length: template.itemNum }, (_, index): ParamTemplateUiItem => ({
+                fieldKey: `__count_${index}`,
+                fieldName: "",
+                fieldType: "text",
+                required: false,
+                display: false,
+                sortOrder: index + 1
+              }))
+      })),
+    [categoryNameById, templatesQuery.data]
   );
 
   function closeModal() {
@@ -117,19 +143,27 @@ export function ParamTemplatesPage() {
     });
   }
 
-  function openEditModal(record: ParamTemplate) {
-    setEditing(record);
-    setOpen(true);
-    form.setFieldsValue({
-      name: record.name,
-      categoryId: record.categoryId,
-      statusEnabled: record.status === "enabled",
-      items: record.items.map((item) => ({ ...item }))
-    });
+  async function openEditModal(record: ParamTemplateUi) {
+    setDetailLoading(true);
+    try {
+      const detail = await paramTemplatesApi.getItemsById(record.id);
+      setEditing(detail);
+      setOpen(true);
+      form.setFieldsValue({
+        name: detail.name,
+        categoryId: detail.categoryId,
+        statusEnabled: detail.status === "enabled",
+        items: detail.items.map((item) => ({ ...item }))
+      });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "æ¨¡æ¿è¯¦æƒ…èŽ·å–å¤±è´¥");
+    } finally {
+      setDetailLoading(false);
+    }
   }
 
   function submit(values: TemplateFormValue) {
-    const payload: Omit<ParamTemplate, "id"> = {
+    const payload: Omit<ParamTemplateUi, "id" | "itemNum"> = {
       name: values.name,
       categoryId: values.categoryId,
       status: values.statusEnabled ? "enabled" : "disabled",
@@ -162,8 +196,8 @@ export function ParamTemplatesPage() {
     >
       <Table
         rowKey="id"
-        loading={templatesQuery.isLoading}
-        dataSource={templatesQuery.data ?? []}
+        loading={templatesQuery.isLoading || detailLoading}
+        dataSource={tableTemplates}
         columns={[
           { title: "模板名称", dataIndex: "name" },
           { title: "所属分类", dataIndex: "categoryName" },
@@ -292,5 +326,3 @@ export function ParamTemplatesPage() {
     </PageCard>
   );
 }
-
-

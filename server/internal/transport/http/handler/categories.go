@@ -7,6 +7,7 @@ import (
 	"vehivle/internal/domain/model"
 	"vehivle/internal/service/category"
 	"vehivle/internal/transport/http/helper"
+	"vehivle/internal/transport/http/constant"
 	"vehivle/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -14,11 +15,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	DEFAULT_CATEGORY_LIST_PAGE      = 1
-	DEFAULT_CATEGORY_LIST_PAGE_SIZE = 10
-	MAX_CATEGORY_LIST_PAGE_SIZE     = 100
-)
 
 type Categories struct {
 	CategoryService *category.CategoryService
@@ -90,15 +86,15 @@ func (c *Categories) List(ctx *gin.Context) {
 	// 如果page小于1，则设置为1
 	page := raw.Page
 	if page <= 0 {
-		page = DEFAULT_CATEGORY_LIST_PAGE
+		page = constant.DEFAULT_CATEGORY_LIST_PAGE
 	}
 	// 如果pageSize小于1，则设置为DEFAULT_CATEGORY_LIST_PAGE_SIZE
 	pageSize := raw.PageSize
 	if pageSize <= 0 {
-		pageSize = DEFAULT_CATEGORY_LIST_PAGE_SIZE
+		pageSize = constant.DEFAULT_CATEGORY_LIST_PAGE_SIZE
 	}
 	// 如果pageSize大于MAX_CATEGORY_LIST_PAGE_SIZE，则设置为MAX_CATEGORY_LIST_PAGE_SIZE
-	if pageSize > MAX_CATEGORY_LIST_PAGE_SIZE {
+	if pageSize > constant.MAX_CATEGORY_LIST_PAGE_SIZE {
 		response.FailParam(ctx, "pageSize 不能大于100")
 		return
 	}

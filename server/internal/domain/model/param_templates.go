@@ -25,6 +25,17 @@ type ParamTemplate struct {
 	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
 }
 
+type PamListTmp struct {
+	ParamTemplate
+	ItemNum int `json:"itemNum"`
+}
+
+// 查询参数
+type TmpQuery struct {
+	Page     int `form:"page"`
+	PageSize int `form:"pageSize"`
+}
+
 func (*ParamTemplate) TableName() string {
 	return "param_templates"
 }
@@ -47,9 +58,9 @@ type ParamTemplateItem struct {
 	FieldName  string    `json:"fieldName" binding:"required" gorm:"column:field_name;not null"`
 	FieldType  string    `json:"fieldType" binding:"required,oneof=text number single_select" gorm:"column:field_type;not null"`
 	Unit       *string   `json:"unit,omitempty" gorm:"column:unit"`
-	Required   *int8      `json:"required" binding:"required,oneof=0 1" gorm:"column:required;not null"`
-	Display    *int8      `json:"display" binding:"required,oneof=0 1" gorm:"column:display;not null"`
-	SortOrder  *int       `json:"sortOrder" binding:"required,min=0" gorm:"column:sort_order;not null"`
+	Required   *int8     `json:"required" binding:"required,oneof=0 1" gorm:"column:required;not null"`
+	Display    *int8     `json:"display" binding:"required,oneof=0 1" gorm:"column:display;not null"`
+	SortOrder  *int      `json:"sortOrder" binding:"required,min=0" gorm:"column:sort_order;not null"`
 	CreatedAt  time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt  time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
 }

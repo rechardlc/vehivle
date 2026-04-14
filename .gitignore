@@ -59,6 +59,7 @@ out/
 # Go
 bin/
 *.exe
+__debug_bin*
 # go test -c / 覆盖率等本地产物
 *.test
 coverage.out

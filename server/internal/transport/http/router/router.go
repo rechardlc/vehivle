@@ -89,10 +89,13 @@ func (r *Router) Register() error {
 
 		paramTemplates := admin.Group("/param-templates")
 		{
+			templateList := []string{"page", "pageSize"}
+			paramTemplates.GET("/list", middleware.ValidateParams(templateList), r.handlers.ParamTemplates.List)
 			paramTemplates.POST("", r.handlers.ParamTemplates.Create)
 			paramTemplates.PUT("/:id", r.handlers.ParamTemplates.Update)
-			paramTemplates.GET("/all-detail/:id", r.handlers.ParamTemplates.AllDetail)
-			paramTemplates.GET("/detail/:id", r.handlers.ParamTemplates.Detail)
+			paramTemplates.GET("/getItemsbyId/:id", r.handlers.ParamTemplates.GetItemsById)
+			paramTemplates.GET("/getById/:id", r.handlers.ParamTemplates.GetById)
+			paramTemplates.DELETE("/:id", r.handlers.ParamTemplates.Delete)
 		}
 
 		admin.POST("/upload/images", r.handlers.Upload.UploadImages)

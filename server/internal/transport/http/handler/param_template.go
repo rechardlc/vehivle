@@ -5,18 +5,52 @@ import (
 	"vehivle/internal/service/param_template"
 
 	"vehivle/internal/transport/http/helper"
+	"vehivle/internal/transport/http/constant"
 
 	"vehivle/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
 
+
+// 当query查询参数或者post表单提交时，使用form tag标注
 type ParamTemplates struct {
 	ParamTemplateService *param_template.ParamTemplateService
 }
+/*
+	1. queryListParams不被外部使用，所以小写就可以了
+	2. Page、PageSize字段需要与gin交互，所以需要大写，小写无法反射
+*/
+// type queryListParams struct {
+// 	Page     int `form:"page"`
+// 	PageSize int `form:"pageSize"`
+// }
 
 func NewParamTemplates(paramTemplateService *param_template.ParamTemplateService) *ParamTemplates {
 	return &ParamTemplates{ParamTemplateService: paramTemplateService}
+}
+
+func (p *ParamTemplates) List(c *gin.Context) {
+	var query model.TmpQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.FailParam(c, "参数异常")
+	}
+	if query.Page == 0 {
+		query.Page = constant.DEFAULT_CATEGORY_LIST_PAGE
+	}
+	if query.PageSize == 0 {
+		query.PageSize = constant.DEFAULT_CATEGORY_LIST_PAGE_SIZE
+	}
+	if query.PageSize > constant.MAX_CATEGORY_LIST_PAGE_SIZE {
+		response.FailParam(c, "pagesize最大值超过100")
+		return
+	}
+	result, err := p.ParamTemplateService.List(c.Request.Context(), &query)
+	if err != nil {
+		response.FailBusiness(c, err.Error())
+		return
+	}
+	response.Success(c, result)
 }
 
 func (p *ParamTemplates) Create(c *gin.Context) {
@@ -52,13 +86,13 @@ func (p *ParamTemplates) Update(c *gin.Context) {
 	response.Success(c, result)
 }
 
-func (p *ParamTemplates) AllDetail(c *gin.Context) {
+func (p *ParamTemplates) GetItemsById(c *gin.Context) {
 	id := c.Param("id")
 	if err := helper.RequiredField(id); err != nil {
 		response.FailParam(c, err.Error())
 		return
 	}
-	result, err := p.ParamTemplateService.AllDetail(c, id)
+	result, err := p.ParamTemplateService.GetItemsById(c.Request.Context(), id)
 	if err != nil {
 		response.FailBusiness(c, "模板数据为空")
 		return
@@ -66,16 +100,30 @@ func (p *ParamTemplates) AllDetail(c *gin.Context) {
 	response.Success(c, result)
 }
 
-func (p *ParamTemplates) Detail(c *gin.Context) {
+func (p *ParamTemplates) GetById(c *gin.Context) {
 	id := c.Param("id")
 	if err := helper.RequiredField(id); err != nil {
 		response.FailParam(c, err.Error())
 		return
 	}
-	result, err := p.ParamTemplateService.Detail(c, id)
+	result, err := p.ParamTemplateService.GetById(c.Request.Context(), id)
 	if err != nil {
 		response.FailBusiness(c, "模板数据为空")
 		return
 	}
 	response.Success(c, result)
+}
+
+func (p *ParamTemplates) Delete(c *gin.Context) {
+	id := c.Param("id")
+	if err := helper.RequiredField(id); err != nil {
+		response.FailParam(c, err.Error())
+		return
+	}
+	err := p.ParamTemplateService.Delete(c.Request.Context(), id)
+	if err != nil {
+		response.FailBusiness(c, "删除失败！")
+		return
+	}
+	response.Success(c, "")
 }
