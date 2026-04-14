@@ -1,4 +1,4 @@
-# OS / Editor
+# OS / editor
 .DS_Store
 Thumbs.db
 Desktop.ini
@@ -12,14 +12,26 @@ Desktop.ini
 *.log
 logs/
 
-# Env / Secrets
+# Env / secrets
 .env
 .env.*
 !.env.example
+!**/.env.example
 !admin/.env.development
 !admin/.env.production
 
-# Node.js
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# Node.js / frontend
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -33,8 +45,15 @@ build/
 .nuxt/
 .output/
 .cache/
+.vite/
+.turbo/
+coverage/
+*.lcov
+.nyc_output/
+playwright-report/
+test-results/
 
-# TypeScript（增量编译 / project references 产物）
+# TypeScript build metadata
 *.tsbuildinfo
 
 # Python
@@ -60,19 +79,43 @@ out/
 bin/
 *.exe
 __debug_bin*
-# go test -c / 覆盖率等本地产物
 *.test
 coverage.out
 coverage.html
 *.coverprofile
-# 构建与模块缓存（可设于 server/ 等子目录）
+*.prof
+*.pprof
+*.cpu
+*.mem
+
 .gocache/
 .gomodcache/
-# 含 server/tmp（Air / Makefile 编译输出）
 tmp/
+server/tmp/
 server/migrate
+server/seed
 
-# Misc
+# Local tool caches
+.volta/
+
+# Database dumps / local data
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+*.backup
+uploads/
+storage/
+server/uploads/
+server/storage/
+server/data/
+
+# Project document scratch files
+doc/_tmp*/
+doc/_tmp*
+
+# Misc temp files
 *.tmp
 *.temp
 *.bak
@@ -87,14 +130,15 @@ server/migrate
 ~$*.ppt*
 .~lock.*#
 
-# WeChat Mini Program (wxapp)
+# WeChat Mini Program
 miniprogram_npm/
 project.private.config.json
 
-# AI / Agent / IDE tooling
+# AI / agent / IDE tooling
 .agent/
 .agents/
 .claude/
+.codex/
 .qoder/
 .trae/
 .windsurf/
