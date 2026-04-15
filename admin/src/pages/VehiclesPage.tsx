@@ -23,7 +23,8 @@ import {
   Select,
   Space,
   Table,
-  Tag
+  Tag,
+  TreeSelect
 } from "antd";
 import type { TableProps } from "antd";
 import dayjs from "dayjs";
@@ -34,7 +35,7 @@ import { vehiclesApi } from "../api/vehicles";
 import { ImageUploader } from "../components/ImageUploader";
 import { MultiImageUploader } from "../components/MultiImageUploader";
 import { PageCard } from "../components/PageCard";
-import type { PriceMode, Vehicle, VehicleDetailImage, VehicleListItem, VehicleStatus } from "../types";
+import type { Category, PriceMode, Vehicle, VehicleDetailImage, VehicleListItem, VehicleStatus } from "../types";
 
 /** 车型列表默认分页（改此处即可调整首屏条数与起始页） */
 const DEFAULT_VEHICLE_LIST_PAGE = 1;
@@ -58,6 +59,13 @@ const statusOptions: Array<{ label: string; value: VehicleStatus }> = [
   { label: "已发布", value: "published" },
   { label: "已下架", value: "unpublished" }
 ];
+
+interface CategoryTreeNode {
+  title: string;
+  value: string;
+  disabled?: boolean;
+  children?: CategoryTreeNode[];
+}
 
 function renderStatusTag(status: VehicleStatus) {
   if (status === "published") {
@@ -225,6 +233,41 @@ export function VehiclesPage() {
     () => (categoriesQuery.data?.list ?? []).map((item) => ({ label: item.name, value: item.id })),
     [categoriesQuery.data]
   );
+
+  const categoryTreeData = useMemo<CategoryTreeNode[]>(() => {
+    const categories = categoriesQuery.data?.list ?? [];
+    const childrenByParent = new Map<string, Category[]>();
+
+    for (const item of categories) {
+      if (item.level === 2 && item.parentId !== null) {
+        const siblings = childrenByParent.get(item.parentId) ?? [];
+        siblings.push(item);
+        childrenByParent.set(item.parentId, siblings);
+      }
+    }
+
+    return categories
+      .filter((item) => item.level === 1)
+      .map((parent) => ({
+        title: parent.name,
+        value: parent.id,
+        disabled: true,
+        children: (childrenByParent.get(parent.id) ?? []).map((child) => ({
+          title: child.name,
+          value: child.id
+        }))
+      }));
+  }, [categoriesQuery.data]);
+
+  const secondLevelCategoryIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of categoriesQuery.data?.list ?? []) {
+      if (item.level === 2) {
+        ids.add(item.id);
+      }
+    }
+    return ids;
+  }, [categoriesQuery.data]);
 
   function closeModal() {
     setEditing(null);
@@ -550,8 +593,28 @@ export function VehiclesPage() {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="categoryId" label="所属分类" rules={[{ required: true, message: "请选择分类" }]}>
-                  <Select placeholder="请选择所属分类" options={categoryOptions} />
+                <Form.Item
+                  name="categoryId"
+                  label="所属分类"
+                  rules={[
+                    { required: true, message: "请选择分类" },
+                    {
+                      validator: async (_, value: string | undefined) => {
+                        if (value !== undefined && !secondLevelCategoryIds.has(value)) {
+                          throw new Error("只能选择二级分类");
+                        }
+                      }
+                    }
+                  ]}
+                >
+                  <TreeSelect
+                    showSearch
+                    allowClear
+                    treeDefaultExpandAll
+                    treeData={categoryTreeData}
+                    treeNodeFilterProp="title"
+                    placeholder="请选择二级分类"
+                  />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
