@@ -33,12 +33,14 @@ export interface AdminUser {
   role: Role;
 }
 
-/**
- * 登录成功响应体（Token 通过 httpOnly Cookie 传输，不在 body 中返回）。
- * expiresIn: Access Token 有效期（秒），前端可用于主动续签倒计时。
- */
+ /**
+  * 登录/续签成功响应体。
+ * accessToken: 后续管理端请求通过 Authorization: Bearer Token 携带。
+  * expiresIn: Access Token 有效期（秒），前端可用于主动续签倒计时。
+  */
 export interface LoginResult {
   expiresIn: number;
+  accessToken: string;
 }
 
 /**

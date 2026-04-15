@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { App, Avatar, Button, Layout, Menu, Space, Spin, Typography } from "antd";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth";
-import { clearStoredUser, getStoredUser, setStoredUser } from "../state/auth";
+import { clearStoredUser, getStoredAccessToken, getStoredUser, setStoredUser } from "../state/auth";
 
 const { Header, Sider, Content } = Layout;
 
@@ -38,10 +38,11 @@ export function AdminLayout() {
   const currentMenu = menus.find((item) => item.key === selectedKey);
 
   /**
-   * 启动时通过 /auth/me 校验 Cookie 有效性并获取最新用户信息。
+   * 启动时通过 /auth/me 校验 Access Token 有效性并获取最新用户信息。
    * initialData 使用 localStorage 缓存，避免每次刷新页面出现 loading 闪烁。
    */
-  const cachedUser = getStoredUser();
+  const cachedAccessToken = getStoredAccessToken();
+  const cachedUser = cachedAccessToken ? getStoredUser() : null;
   const { data: user, isLoading, isError } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: async () => {

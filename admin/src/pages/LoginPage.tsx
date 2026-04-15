@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { App, Button, Card, Form, Input, Space, Typography } from "antd";
 import { Navigate, useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth";
-import { getStoredUser, setStoredUser } from "../state/auth";
+import { getStoredAccessToken, getStoredUser, setStoredAccessToken, setStoredUser } from "../state/auth";
 
 interface LoginFormValue {
   username: string;
@@ -14,10 +14,12 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const storedUser = getStoredUser();
+  const storedAccessToken = getStoredAccessToken();
 
   const mutation = useMutation({
     mutationFn: async (payload: LoginFormValue) => {
-      await authApi.login(payload);
+      const loginResult = await authApi.login(payload);
+      setStoredAccessToken(loginResult.accessToken);
       const user = await authApi.me();
       return user;
     },
@@ -31,7 +33,7 @@ export function LoginPage() {
     }
   });
 
-  if (storedUser) {
+  if (storedUser && storedAccessToken) {
     return <Navigate to="/dashboard" replace />;
   }
 

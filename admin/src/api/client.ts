@@ -1,6 +1,6 @@
-import axios, { type AxiosError, type AxiosResponse } from "axios";
-import type { ApiResponse } from "../types";
-import { clearStoredUser } from "../state/auth";
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
+import type { ApiResponse, LoginResult } from "../types";
+import { clearStoredUser, getStoredAccessToken, setStoredAccessToken } from "../state/auth";
 
 const DEFAULT_DEV_TIMEOUT_MS = 120_000;
 const DEFAULT_PROD_TIMEOUT_MS = 8_000;
@@ -34,7 +34,15 @@ export const http = axios.create({
 
 /* ---------- 请求拦截器 ---------- */
 
-// httpOnly Cookie 方案下不需要手动注入 Authorization Header，浏览器自动携带 Cookie。
+function attachAccessToken(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
+  const accessToken = getStoredAccessToken();
+  if (accessToken) {
+    config.headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+  return config;
+}
+
+http.interceptors.request.use(attachAccessToken);
 
 /* ---------- 响应拦截器：AT 过期自动续签 ---------- */
 
@@ -86,7 +94,12 @@ http.interceptors.response.use(
 
     isRefreshing = true;
     try {
-      await http.post("/admin/auth/refresh");
+      const refreshResponse = await http.post<ApiResponse<LoginResult>>("/admin/auth/refresh");
+      const nextAccessToken = refreshResponse.data.data?.accessToken;
+      if (!nextAccessToken) {
+        throw new Error("刷新登录状态失败");
+      }
+      setStoredAccessToken(nextAccessToken);
       flushQueue();
       return http(originalRequest);
     } catch (refreshError) {

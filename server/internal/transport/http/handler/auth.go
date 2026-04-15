@@ -12,9 +12,7 @@ import (
 )
 
 const (
-	CookieNameAccessToken  = "access_token"
 	CookieNameRefreshToken = "refresh_token"
-	CookiePathAPI          = "/api"
 	CookiePathAuth         = "/api/v1/admin/auth"
 )
 
@@ -32,7 +30,7 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-// Login 用户登录，成功写入双 Token httpOnly Cookie。
+// Login 用户登录，成功写入 Refresh Token Cookie，并在响应体返回 Access Token。
 func (h *Auth) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -50,10 +48,10 @@ func (h *Auth) Login(c *gin.Context) {
 		return
 	}
 
-	setAccessTokenCookie(c, result.AccessToken, result.ExpiresIn, h.jwtCfg.CookieSecure, h.jwtCfg.CookieDomain)
 	setRefreshTokenCookie(c, result.RefreshToken, result.RefreshExpiresIn, h.jwtCfg.CookieSecure, h.jwtCfg.CookieDomain)
 	response.Success(c, gin.H{
-		"expiresIn": result.ExpiresIn,
+		"expiresIn":   result.ExpiresIn,
+		"accessToken": result.AccessToken,
 	})
 }
 
@@ -75,9 +73,9 @@ func (h *Auth) Refresh(c *gin.Context) {
 		return
 	}
 
-	setAccessTokenCookie(c, result.AccessToken, result.ExpiresIn, h.jwtCfg.CookieSecure, h.jwtCfg.CookieDomain)
 	response.Success(c, gin.H{
-		"expiresIn": result.ExpiresIn,
+		"expiresIn":   result.ExpiresIn,
+		"accessToken": result.AccessToken,
 	})
 }
 
@@ -102,42 +100,28 @@ func (h *Auth) Me(c *gin.Context) {
 	response.Success(c, user)
 }
 
-// Logout 登出，清除 AT + RT Cookie。
+// Logout 登出，清除 Refresh Token Cookie。
 func (h *Auth) Logout(c *gin.Context) {
 	clearAuthCookies(c, h.jwtCfg.CookieSecure, h.jwtCfg.CookieDomain)
 	response.Success(c, nil)
 }
 
 // --- Cookie 工具函数 ---
-
-func setAccessTokenCookie(c *gin.Context, token string, maxAge int, secure bool, domain string) {
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     CookieNameAccessToken, // 访问令牌名称
-		Value:    token,                 // 访问令牌值
-		Path:     CookiePathAPI,         // 访问令牌路径：只有访问/api路径的请求才会携带cookie
-		MaxAge:   maxAge,                // 访问令牌最大年龄：单位为秒
-		Secure:   secure,                // 访问令牌是否安全：是否只通过 HTTPS 传输
-		HttpOnly: true,                  // 访问令牌是否只通过 HTTP 传输：是否只通过 HTTP 传输
-		Domain:   domain,                // 访问令牌域名
-		SameSite: http.SameSiteLaxMode,  // 访问令牌是否允许跨域
-	})
-}
-
+// RT Token配置
 func setRefreshTokenCookie(c *gin.Context, token string, maxAge int, secure bool, domain string) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     CookieNameRefreshToken,
 		Value:    token,
-		Path:     CookiePathAuth,
+		Path:     CookiePathAuth, // 配置只需要携带的路径
 		MaxAge:   maxAge,
 		Secure:   secure,
 		HttpOnly: true,
-		Domain:   domain,
+		Domain:   domain, // 只能携带的域名
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
-// clearAuthCookies 清除 AT + RT Cookie，Path 必须与设置时一致。
+// clearAuthCookies 清除 Refresh Token Cookie，Path 必须与设置时一致。
 func clearAuthCookies(c *gin.Context, secure bool, domain string) {
-	setAccessTokenCookie(c, "", 0, secure, domain)
 	setRefreshTokenCookie(c, "", 0, secure, domain)
 }

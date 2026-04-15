@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -10,17 +11,20 @@ import (
 )
 
 const (
-	CookieAccessToken = "access_token"
-	CtxKeyUserID      = "current_user_id"
-	CtxKeyUsername    = "current_username"
-	CtxKeyRole        = "current_role"
+	HeaderAuthorization = "Authorization"
+	BearerPrefix        = "Bearer "
+	CtxKeyUserID        = "current_user_id"
+	CtxKeyUsername      = "current_username"
+	CtxKeyRole          = "current_role"
 )
 
-// JWTAuth 从 httpOnly Cookie 读取 Access Token，解析 Claims 并注入 Context。
+// JWTAuth 从请求 Header 读取 Access Token，解析 Claims 并注入 Context。
 func JWTAuth(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, err := c.Cookie(CookieAccessToken)
-		if err != nil || tokenString == "" {
+		// FE analogy: Like reading a token from an Axios request interceptor.
+		// Go detail: Gin exposes HTTP headers through the request context, so middleware can validate before handlers run.
+		tokenString := getAccessTokenFromHeader(c)
+		if tokenString == "" {
 			response.FailAuth(c, "缺少有效的认证令牌")
 			c.Abort()
 			return
@@ -43,6 +47,14 @@ func JWTAuth(secret string) gin.HandlerFunc {
 		c.Set(CtxKeyRole, claims.Role)
 		c.Next()
 	}
+}
+
+func getAccessTokenFromHeader(c *gin.Context) string {
+	authHeader := strings.TrimSpace(c.GetHeader(HeaderAuthorization))
+	if strings.HasPrefix(authHeader, BearerPrefix) {
+		return strings.TrimSpace(strings.TrimPrefix(authHeader, BearerPrefix))
+	}
+	return ""
 }
 
 // RequireRole 角色鉴权中间件，仅允许指定角色通过。
