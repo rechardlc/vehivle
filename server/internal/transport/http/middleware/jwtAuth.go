@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -45,6 +46,10 @@ func JWTAuth(secret string) gin.HandlerFunc {
 		c.Set(CtxKeyUserID, claims.UserID)
 		c.Set(CtxKeyUsername, claims.Username)
 		c.Set(CtxKeyRole, claims.Role)
+		// 将用户信息设置到标准库context.Context上下文中，这样logger中间件就能自动提取用户信息
+		stdCtx := context.WithValue(c.Request.Context(), CtxKeyUserID, claims.UserID)
+		// 覆盖gin.Context的Request，将标准库context.Context传递下去
+		c.Request = c.Request.WithContext(stdCtx)
 		c.Next()
 	}
 }

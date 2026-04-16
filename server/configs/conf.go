@@ -14,6 +14,9 @@ import (
 
 const envPrefix = "VEHIVLE"
 
+
+// mapstructure 一种类似于json的tag，核心目的是将yaml文件中的配置项映射到结构体中
+// 比如"1"，会转化为int 1
 // Conf 应用总配置，由 YAML + 环境变量合并而成。
 type Conf struct {
 	App      AppConfig      `mapstructure:"app"`
@@ -83,6 +86,8 @@ func Load() (*Conf, error) {
 	_ = gotenv.Load(".env")
 	env := getEnvValue("VEHIVLE_APP_ENV", "APP_ENV", DefaultAppEnv)
 	// 读取 .env.{env} 文件，将变量写入环境变量
+	// gotenv读取的文件跟go run执行的目录有关，所以需要指定路径
+	// 这里直接在server目录执行的，所以可以直接读取到.env和.env.{env}
 	_ = gotenv.Load(".env." + env)
 
 	// 2. 初始化 Viper，设置默认值

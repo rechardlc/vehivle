@@ -9,7 +9,9 @@ import (
 )
 
 // 在Gin中使用的请求ID的Key
-const GinRequestIDKey = "request_id"
+const (
+	GinRequestIDKey = "request_id"
+)
 
 // gin.HandlerFunc是Gin框架的中间件类型，用于构建gin中间件，用于生成请求ID
 // RequestID是生成请求ID的中间件
@@ -24,7 +26,7 @@ func RequestID() gin.HandlerFunc {
 			// uuid.New()生成一个唯一的UUID
 			requestID = uuid.New().String()
 		}
-		// 将请求ID设置到上下文中
+		// 将请求ID设置到gin.Context上下文中
 		c.Set(GinRequestIDKey, requestID)
 		// 将请求ID设置到响应头中
 		c.Header("X-Request-ID", requestID)
@@ -52,21 +54,25 @@ func AccessLog(logger Logger) gin.HandlerFunc {
 				requestID = s
 			}
 		}
-		// 将请求ID设置到上下文中
+		// 将请求ID设置到标准库context.Context上下文中
 		ctx := WithRequestID(c.Request.Context(), requestID)
+		// Middleware是洋葱模型：将c.Next()放在中间，可以实现请求前和请求后的操作
 		c.Next()
 		// 获取延迟时间
 		latency := time.Since(start)
 		// 获取响应状态码
 		status := c.Writer.Status()
 		// 记录日志
+		ginErr := c.Errors.ByType(gin.ErrorTypePublic).String()
+		if ginErr != "" {
+			logger.Error(ctx, "request", slog.String("error", ginErr))
+		}
 		logger.Info(
 			ctx,
 			"request",
 			slog.String("path", path),
 			slog.String("method", method),
 			slog.String("client_ip", clientIP),
-			slog.String("request_id", requestID),
 			slog.Int("status", status),
 			slog.Duration("latency_ms", latency),
 		)

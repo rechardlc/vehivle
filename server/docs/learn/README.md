@@ -7,9 +7,10 @@
 建议阅读顺序：
 
 1. 先看 [progress.md](./progress.md)，了解当前整体进度。
-2. 再看最新未提交改动复盘：[lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md)。
-3. 需要理解上一轮全链路审计时，再看 [lesson-20260414.md](./lesson-20260414.md)。
-4. 遇到某个模块不理解时，再回看对应日期的 `lesson-*.md`。
+2. 再看今日学习记录：[lesson-20260416.md](./lesson-20260416.md)。
+3. 需要理解上一轮未提交改动复盘时，再看 [lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md)。
+4. 需要理解上一轮全链路审计时，再看 [lesson-20260414.md](./lesson-20260414.md)。
+5. 遇到某个模块不理解时，再回看对应日期的 `lesson-*.md`。
 
 ## 与 `server/docs` 的关系
 
@@ -23,26 +24,27 @@
 
 ## 当前最重要结论
 
-最新复盘日期：2026-04-14。
+最新复盘日期：2026-04-16。
 
-结论：`server` 的工程骨架链路已经形成，本轮未提交内容继续补齐了公开端读取、车型详情图、参数模板 Update 契约、分类分页默认值和发布校验等关键断点；但从企业交付标准看，目前还不能算完整可交付。
+结论：`server` 的业务链路骨架已经形成，今日学习重点转向请求可观测性：`RequestID -> context.Context -> slog.Handler -> AccessLog/JWT` 的日志上下文链路已经开始成形；但 `user_id` 是否能稳定进入访问日志、优雅关闭、业务错误统一记录和 context key 类型化仍未闭环。
 
 关键原因：
 
-- `helper.RequiredField` 的已知编译阻断点已修复，但仍需要用 `go test ./...` 验证全仓编译与测试。
-- 参数模板 `PUT /admin/param-templates/:id` 已改为以 URL id 为权威 id，列表空结果和 `ItemsCount` 错误传播也已收口；`getItemsById/getItemsbyId` 双路由仍需后续统一。
-- 公开端已补 `home/categories/vehicles/detail/contact/share-check`，但首页 `banners/zones` 仍是占位，公开 contact 的错误处理也偏静默。
-- 车型详情图链路已从迁移、模型、repo/service、管理端接口到后台多图上传形成闭环；但车型保存与详情图保存是两次请求，存在部分成功风险。
-- 发布校验已真实检查封面图、启用分类、详情图和必填参数；但 `vehicle_param_values` 仍缺管理端参数值写入/回显闭环。
-- 媒体补偿/GC、RBAC 挂载、初始管理员种子、CI 门禁和自动化测试仍需补齐。
+- `RequestID` 已能从请求头或 UUID 生成，并通过响应头、Gin context、标准 `context.Context` 进入访问日志。
+- `slog.Handler` 包装器已开始承担公共日志字段自动注入职责，减少每个调用点手动传 `request_id` 的重复。
+- `gin.Logger()` 已被自定义 `AccessLog` 替代，避免访问日志重复；`gin.Recovery()` 继续作为 panic 兜底。
+- `JWTAuth` 已尝试把 `claims.UserID` 写入标准 context，但由于 `AccessLog` 在 `c.Next()` 前创建本地 `ctx`，最终访问日志是否稳定拿到 `user_id` 仍需实测。
+- `main.go` 已意识到 `os.Exit` 会跳过 `defer`，但 `defer b.Close()` 和真正的 `http.Server` 优雅关闭仍未落地。
+- 业务链路遗留项仍包括媒体补偿/GC、RBAC 挂载、初始管理员种子、CI 门禁和自动化测试。
 
-详细分析见 [lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md) 与 [lesson-20260414.md](./lesson-20260414.md)。
+详细分析见 [lesson-20260416.md](./lesson-20260416.md)、[lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md) 与 [lesson-20260414.md](./lesson-20260414.md)。
 
 ## 文件索引
 
 | 文件 | 说明 |
 |---|---|
 | [progress.md](./progress.md) | 总进度、当前全链路状态、每日倒序记录。 |
+| [lesson-20260416.md](./lesson-20260416.md) | 请求上下文日志链路：RequestID、标准 context、slog.Handler、AccessLog、JWT 用户身份注入与剩余风险。 |
 | [lesson-20260414-uncommitted-review.md](./lesson-20260414-uncommitted-review.md) | 基于未提交 diff 的二次复盘：公开端、车型详情图、发布校验、参数模板契约与剩余风险。 |
 | [lesson-20260414.md](./lesson-20260414.md) | 全链路关系审计、当前缺陷、参数模板 server 链路补齐复盘、企业级解决方案、验收清单。 |
 | [lesson-20260413.md](./lesson-20260413.md) | 参数模板全链路：迁移、模型、GORM 一对多、事务 Update、组合根接入。 |

@@ -58,9 +58,15 @@ func (b *Bootstrap) Run() (*gin.Engine, error) {
 	r.RedirectTrailingSlash = false
 	// 限制 multipart 表单内存占用（10MB）
 	r.MaxMultipartMemory = 10 << 20
-	r.Use(gin.Logger())
+	// gin.Recovery() 捕获 panic 并返回 500 错误，防止进程崩溃
+	// 先 gin.Recovery() 再 gin.Logger()，这样 gin.Logger() 才能记录到 gin.Recovery() 捕获的 panic
+	// gin：r.Use中间件使用方法：
 	r.Use(gin.Recovery())
+	// 日志重复，去掉gin.Logger
+	// r.Use(gin.Logger())
+	// 给上下文添加请求ID
 	r.Use(logger.RequestID())
+	// 记录访问日志
 	r.Use(logger.AccessLog(b.logger))
 	if err := b.pgsqlConnPool(); err != nil {
 		return nil, err

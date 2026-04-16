@@ -120,18 +120,35 @@ func NewLogger(env Env) Logger {
 	var h slog.Handler
 	if env == EnvProd {
 		// 生产环境使用 JSON 格式化日志
-		// os.Stdout是标准输出，相当于console.log
 		h = slog.NewJSONHandler(os.Stdout, opts)
 	} else {
-		// 开发环境使用文本格式化日志，同时打印堆栈信息
-		// os.Stdout是标准输出，相当于console.log
+		// 开发环境使用文本格式化日志
 		h = slog.NewTextHandler(os.Stdout, opts)
 	}
-	// slog.New创建一个Logger，Logger是slog的核心，用于记录日志
-	// h是slog.Handler，用于格式化日志
-	// &defaultLogger{slog.New(h)}返回一个defaultLogger结构体，结构体中包含Logger指针
-	// defaultLogger结构体中包含Logger指针，所以可以调用Logger的方法
+	
+	// 核心步骤：用自定义的 contextHandler 包装原生的 Handler，实现上下文自动提取
+	h = contextHandler{h}
+
 	return &defaultLogger{slog.New(h)}
+}
+
+// contextHandler 包装 slog.Handler，用于自动从 context 提取字段注入到每一条日志中
+type contextHandler struct {
+	slog.Handler // 匿名嵌入，相当于继承
+}
+
+// Handle 拦截每条日志输出，在写入前塞入 Context 中的变量
+func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
+	// 自动提取 RequestID
+	if reqID := GetRequestID(ctx); reqID != "" {
+		r.AddAttrs(slog.String("request_id", reqID))
+	}
+	// 后续如果加上了 User 解析，在这里也能自动提取
+	if userID, ok := ctx.Value("current_user_id").(int64); ok {
+		r.AddAttrs(slog.Int64("user_id", userID))
+	}
+	
+	return h.Handler.Handle(ctx, r)
 }
 
 // context标准库的作用：传递上下文信息

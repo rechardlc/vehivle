@@ -3,7 +3,6 @@ package main
 
 import (
 	"log/slog"
-	"os"
 	"strconv"
 	"vehivle/configs"
 	"vehivle/internal/bootstrap"
@@ -15,7 +14,7 @@ func main() {
 	cfg, err := configs.Load()
 	if err != nil {
 		slog.Error("加载配置失败", "error", err)
-		os.Exit(1)
+		panic(err)
 	}
 	// 创建 Bootstrap 实例。
 	b := bootstrap.New(cfg)
@@ -24,9 +23,11 @@ func main() {
 	// 如果启动失败，记录错误并退出。
 	if err != nil {
 		slog.Error("启动服务失败", "error", err)
-		os.Exit(1)
+		panic(err)
 	}
 	// 启动 HTTP 服务，监听指定端口。
 	r.Run(":" + strconv.Itoa(cfg.App.Port))
 	// 优雅关闭，后续增加优雅关闭。
+
+	// defer b.Close()
 }

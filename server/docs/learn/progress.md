@@ -4,9 +4,13 @@
 
 ---
 
-## 最新审计提醒（2026-04-14）
+## 最新审计提醒（2026-04-16）
 
-最新全链路审计见 [lesson-20260414.md](./lesson-20260414.md)。当前结论是：工程骨架链路已经形成，但还不能判定为企业级完整可交付；`go test ./...` 当前因 `internal/transport/http/helper/utils.go:53` 编译失败，参数模板 Update、公开端聚合接口、分类默认分页、发布校验、媒体补偿、RBAC 挂载仍需优先闭环。
+今日最新学习主题：请求上下文日志链路。`server` 当前开始把 `RequestID`、标准库 `context.Context`、`slog.Handler`、访问日志和 JWT 用户身份串起来，让日志从“单行输出”升级为可追踪的请求链路。
+
+当前仍需优先验证：受保护 admin 接口的访问日志是否同时包含 `request_id` 和 `user_id`；如果 `user_id` 丢失，需要调整 `AccessLog` 在 `c.Next()` 之后读取最新 `c.Request.Context()`，或统一从 Gin context 回填用户字段。
+
+详见 [lesson-20260416.md](./lesson-20260416.md)。上一轮全链路审计见 [lesson-20260414.md](./lesson-20260414.md)。
 
 ## 一、项目落地顺序（对齐循序渐进总说明）
 
@@ -147,6 +151,17 @@ server/
 ## 六、每日进度
 
 > 按日期倒序，最新在前。建议每天结束前：自测通过、写 5 行复盘、记录明天第一件事。
+
+### 2026-04-16
+
+- **完成**：新增 [lesson-20260416.md](./lesson-20260416.md)，复盘请求上下文日志链路：`RequestID`、标准库 `context.Context`、`slog.Handler` 包装器、`AccessLog` 和 JWT 用户身份注入。
+- **学习**：`os.Exit(1)` 会跳过 `defer`，`panic(err)` 会展开调用栈并触发已注册 `defer`；真正生产级启动入口仍应补 `http.Server`、signal 监听、`Shutdown(ctx)` 和资源关闭。
+- **学习**：Gin 中间件是洋葱模型，`AccessLog` 应在 `c.Next()` 之后读取状态码、耗时和错误；项目已有自定义访问日志时，应避免同时打开 `gin.Logger()` 造成重复日志。
+- **学习**：`slog.Handler` 可以作为统一日志字段注入点，调用方只传 `ctx`，底层自动补 `request_id`、`user_id` 等公共字段。
+- **发现**：`JWTAuth` 已将 `claims.UserID` 写入标准 context，但 `AccessLog` 在 `c.Next()` 前创建本地 `ctx`，访问日志是否能拿到后续写入的 `user_id` 仍需实测。
+- **风险**：JWT 用户字段当前使用字符串 context key，后续应收口为类型化 key 和 `WithUserID/GetUserID` helper，避免跨包 key 冲突。
+- **文档**：更新 [README.md](./README.md) 的最新入口、当前结论和文件索引；更新 [progress.md](./progress.md) 的最新提醒和每日进度。
+- **明日第一件事**：请求一个受 JWT 保护的 admin 接口，验证日志是否同时包含 `request_id` 和 `user_id`；若没有，先调整 `AccessLog` 在 `c.Next()` 后读取最新 `c.Request.Context()`。
 
 ### 2026-04-14（未提交改动复盘）
 
@@ -377,4 +392,4 @@ server/
 - **文档**：重写 [learn/README.md](./README.md)，把最新审计文档提升为优先阅读入口，并补充“如何判断一条后端链路完整”的检查框架。
 - **明日第一件事**：优先修复 P0 编译错误，然后修复参数模板 Update 的 URL id 契约，再补公开端 `home/categories/detail/contact/share-check` 链路。
 
-*最后更新：2026-04-14（未提交改动复盘 + 公开端/详情图/发布校验/参数模板契约同步；lesson-20260414-uncommitted-review / README / progress 同步）*
+*最后更新：2026-04-16（请求上下文日志链路学习；lesson-20260416 / README / progress 同步）*
